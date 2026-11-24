@@ -37,7 +37,7 @@ body {
     }
   .garden-grid {
     background-color: #a1e2a1;
-    background-image: url("images/background.png");
+    background-image: url("./background.png");
     background-size: 100% 100%;
     background-position: center;
     background-repeat: no-repeat;
