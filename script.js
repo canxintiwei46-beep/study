@@ -1,6 +1,38 @@
 
-// ç·´ç¿’å•é¡Œå°‚ç”¨ã‚µã‚¤ãƒˆç”¨ã®å…±é€šå‡¦ç†
+let originalDaysLeft = 0;
+let daysArray = []; 
+let studyPool = []; 
+let defaultDailyHours = 2; 
+let selectedOffDays = []; 
+let testDateGlobal = null;
+let baseSubjectsGlobal = []; 
+let weakSubjectsGlobal = []; 
+let totalCompletedCount = 0;
+let totalExtraCount = 0;
+let currentPlanVersion = "";
 let isRetryingWrongQuestions = false;
+
+function goToGameMode() {
+    const gameUrl = new URL("../game/game.(2).html", window.location.href);
+    console.log("ƒQ[ƒ€‚ÌˆÚ“®æ:", gameUrl.href);
+    window.location.href = gameUrl.href;
+}
+
+// Œ»İ‚Ì•\¦‰æ–Ê‚ğŠÇ— ("study" | "practice" | "mypage")
+let currentScreen = "study";
+
+// ƒ^ƒCƒ}[—p•Ï”
+let timerInterval = null;
+let timerSeconds = 25 * 60;
+let isTimerRunning = false;
+
+function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -9,6 +41,2087 @@ function shuffleArray(array) {
     return array;
 }
 
+// •\¦ƒ‚[ƒh‚Ì‘I‘ğó‘Ô‚ğæ“¾‚·‚éŠÖ”
+
+// Œ»İ‚Ìƒ‚[ƒh‚ğæ“¾
+function getSelectedDisplayMode() {
+    const selected = document.querySelector(
+        'input[name="displayMode"]:checked'
+    );
+    return selected ? selected.value : "normal";
+}
+
+// ƒ†[ƒU[•Ê‚Ìİ’è•Û‘¶ƒL[
+function getGameModeStorageKey() {
+    const userId = localStorage.getItem("loginUserId");
+    return userId ? `gameModeEnabled_${userId}` : null;
+}
+
+// •Û‘¶Ï‚İİ’è‚ğ“Ç‚İ‚Ş
+function loadGameModeSetting() {
+    const key = getGameModeStorageKey();
+    const enabled = key && localStorage.getItem(key) === "true";
+
+    const radio = document.querySelector(
+        `input[name="displayMode"][value="${enabled ? "game" : "normal"}"]`
+    );
+
+    if (radio) radio.checked = true;
+
+    updateDisplayModeUI(false);
+}
+
+// •\¦XV‚Æİ’è•Û‘¶
+function updateDisplayModeUI(shouldSave = true) {
+    const mode = getSelectedDisplayMode();
+
+    document.getElementById("card-mode-normal")
+        ?.classList.toggle("selected", mode === "normal");
+
+    document.getElementById("card-mode-game")
+        ?.classList.toggle("selected", mode === "game");
+
+    const gameButton = document.getElementById("game-mode-nav-btn");
+
+    if (gameButton) {
+        gameButton.style.display =
+            mode === "game" ? "" : "none";
+    }
+
+    if (shouldSave) {
+        const key = getGameModeStorageKey();
+
+        if (key) {
+            localStorage.setItem(key, String(mode === "game"));
+        }
+
+        recordSelectedMode();
+    }
+}
+
+
+
+async function recordSelectedMode() {
+    const token = localStorage.getItem("sessionToken");
+
+    if (!token) return;
+
+    const mode = getSelectedDisplayMode() === "game"
+        ? "ƒQ[ƒ€"
+        : "’Êí";
+
+    try {
+        const result = await gasRequest("recordModeChange", {
+            token: token,
+            mode: mode
+        });
+
+        if (result.success) {
+            console.log("—˜—pƒ‚[ƒh‚ğ‹L˜^‚µ‚Ü‚µ‚½:", mode);
+        } else {
+            console.error("ƒ‚[ƒh‹L˜^¸”s:", result.message);
+        }
+    } catch (error) {
+        console.error("ƒ‚[ƒh‹L˜^ƒGƒ‰[:", error);
+    }
+}
+
+window.onload = function () {
+    const today = new Date();
+    today.setDate(today.getDate() + 14);
+
+    document.getElementById("test-date").value =
+        getLocalDateString(today);
+
+    updateWeakSubjectOptions();
+    renderMiniCalendarPicker();
+   loadGameModeSetting();
+    
+
+    // ŠwKŒv‰æ‚Ì“Ç‚İ‚İ‚Í
+    // VGAS‚Ì•Û‘¶E“Ç‚İ‚İ‹@”\‚ğÀ‘•‚µ‚Ä‚©‚ç’Ç‰Á‚·‚é
+};
+
+/* --- ƒ[ƒJƒ‹ƒXƒgƒŒ[ƒW•Û‘¶ & •œŒ³ --- */
+function loadData() {
+    const savedStr = localStorage.getItem('studyPlanData');
+    if (!savedStr) return false;
+
+    try {
+        const data = JSON.parse(savedStr);
+        daysArray = data.daysArray || [];
+        if (data.testDate) testDateGlobal = new Date(data.testDate);
+        baseSubjectsGlobal = data.baseSubjects || [];
+        weakSubjectsGlobal = data.weakSubjects || [];
+        defaultDailyHours = data.defaultDailyHours || 2;
+        selectedOffDays = data.selectedOffDays || [];
+
+        if (data.testDate) document.getElementById('test-date').value = data.testDate;
+        if (data.subjectInputValue) document.getElementById('subject-input').value = data.subjectInputValue;
+        if (data.defaultDailyHours) document.getElementById('daily-hours').value = data.defaultDailyHours;
+
+        if (data.weakRatio) {
+            const radio = document.querySelector(`input[name="weakRatio"][value="${data.weakRatio}"]`);
+            if (radio) radio.checked = true;
+        }
+
+		loadGameModeSetting();
+
+        updateWeakSubjectOptions();
+
+        const checkboxes = document.querySelectorAll('#weak-subjects-checkboxes input');
+        checkboxes.forEach(cb => {
+            if (weakSubjectsGlobal.includes(cb.value)) cb.checked = true;
+        });
+
+        renderMiniCalendarPicker();
+        
+        // ŠwKŒv‰æ‰æ–Ê‚Ì‚¾‚¯•\¦
+        if (currentScreen === "study") {
+            document.getElementById('result-layout').style.setProperty("display", "grid", "important");
+        } else {
+            document.getElementById('result-layout').style.setProperty("display", "none", "important");
+        }
+        document.getElementById('reset-plan-btn').style.display = 'block';
+        
+        renderCalendar();
+        renderChecker();
+        updateDashboard();
+        updateSettingVisibility();
+
+        return true;
+    } catch (e) {
+        console.error("ƒf[ƒ^‚Ìƒ[ƒh‚É¸”s‚µ‚Ü‚µ‚½", e);
+        return false;
+    }
+}
+
+// ===============================
+// ƒXƒe[ƒ^ƒX‚ğGAS‚©‚ç“Ç‚İ‚İ
+// ===============================
+
+async function loadStatusFromGAS() {
+    const token = localStorage.getItem("sessionToken");
+    if (!token) return;
+
+    try {
+        const result = await gasRequest("loadStatus", {
+            token: token
+        });
+
+        if (result.success) {
+            totalCompletedCount =
+                Number(result.completedCount) || 0;
+
+            totalExtraCount =
+                Number(result.extraCount) || 0;
+
+            renderChecker();
+            renderMyPage();
+
+            console.log("ƒXƒe[ƒ^ƒX‚ğVGAS‚©‚ç“Ç‚İ‚İ‚Ü‚µ‚½I");
+        } else {
+            console.error("ƒXƒe[ƒ^ƒX“Ç‚İ‚İ¸”s:", result.message);
+        }
+    } catch (error) {
+        console.error("ƒXƒe[ƒ^ƒX“Ç‚İ‚İƒGƒ‰[:", error);
+    }
+}
+
+
+// ===============================
+// ˜A‘±ŠwK“ú”‚ğGAS‚©‚ç“Ç‚İ‚İ
+// ===============================
+
+async function loadStreakFromGAS() {
+    const token = localStorage.getItem("sessionToken");
+    if (!token) return;
+
+    try {
+        const result = await gasRequest("loadStreak", {
+            token: token
+        });
+
+        if (result.success) {
+            const element = document.getElementById("dash-streak");
+
+            if (element) {
+                element.textContent = ` ${result.streak}“ú`;
+            }
+
+            console.log("˜A‘±ŠwK“ú”:", result.streak);
+        } else {
+            console.error("˜A‘±ŠwK“ú”‚Ìæ“¾¸”s:", result.message);
+        }
+    } catch (error) {
+        console.error("˜A‘±ŠwK“ú”‚Ì“Ç‚İ‚İƒGƒ‰[:", error);
+    }
+}
+
+
+// ===============================
+// GAS‚©‚ç•Û‘¶Ï‚İ‚ÌŒv‰æ•\‚ğ“Ç‚İ‚İ
+// ===============================
+
+async function loadPlanFromGAS() {
+    const token = localStorage.getItem("sessionToken");
+    if (!token) return false;
+
+    try {
+        const result = await gasRequest("loadPlan", {
+            token: token
+        });
+
+        if (!result.success || !result.planJson) {
+            return false;
+        }
+
+        const data = JSON.parse(result.planJson);
+        currentPlanVersion = result.planVersion;
+
+        if (!Array.isArray(data.daysArray)) {
+            return false;
+        }
+
+        daysArray = data.daysArray;
+        testDateGlobal = data.testDate
+            ? new Date(data.testDate)
+            : null;
+
+        baseSubjectsGlobal = data.baseSubjects || [];
+        weakSubjectsGlobal = data.weakSubjects || [];
+        defaultDailyHours = data.defaultDailyHours || 2;
+        selectedOffDays = data.selectedOffDays || [];
+
+        if (data.testDate) {
+            document.getElementById("test-date").value =
+                data.testDate;
+        }
+
+        if (data.subjectInputValue) {
+            document.getElementById("subject-input").value =
+                data.subjectInputValue;
+        }
+
+        document.getElementById("daily-hours").value =
+            defaultDailyHours;
+
+        if (data.weakRatio) {
+            const radio = document.querySelector(
+                `input[name="weakRatio"][value="${data.weakRatio}"]`
+            );
+            if (radio) radio.checked = true;
+        }
+
+        updateWeakSubjectOptions();
+
+        document.querySelectorAll(
+            "#weak-subjects-checkboxes input"
+        ).forEach(cb => {
+            cb.checked = weakSubjectsGlobal.includes(cb.value);
+        });
+
+        // ‰æ–Ê‚ÌŒ©‚½–Ú‚¾‚¯‚ğXV‚·‚é
+        // “Ç‚İ‚İ’¼Œã‚Ì•s—v‚ÈÄ•Û‘¶‚ğ–h‚®
+        const mode = getSelectedDisplayMode();
+        const cardNormal =
+            document.getElementById("card-mode-normal");
+        const cardGame =
+            document.getElementById("card-mode-game");
+
+        if (cardNormal && cardGame) {
+            cardNormal.classList.toggle(
+                "selected", mode === "normal"
+            );
+            cardGame.classList.toggle(
+                "selected", mode === "game"
+            );
+        }
+
+        const resultLayout =
+            document.getElementById("result-layout");
+        const resetButton =
+            document.getElementById("reset-plan-btn");
+
+        if (daysArray.length > 0) {
+            resultLayout.style.setProperty(
+                "display",
+                currentScreen === "study" ? "grid" : "none",
+                "important"
+            );
+            resetButton.style.display = "block";
+        } else {
+            resultLayout.style.setProperty(
+                "display", "none", "important"
+            );
+            resetButton.style.display = "none";
+        }
+
+        renderMiniCalendarPicker();
+        renderCalendar();
+        renderChecker();
+        updateDashboard();
+        updateSettingVisibility();
+
+        console.log("VGAS‚©‚çŠwKŒv‰æ‚ğ“Ç‚İ‚İ‚Ü‚µ‚½I");
+        return true;
+
+    } catch (error) {
+        console.error("ŠwKŒv‰æ‚Ì“Ç‚İ‚İƒGƒ‰[:", error);
+        return false;
+    }
+}
+
+
+async function saveAllLearningHistoryToGAS() {
+    const promises = [];
+    for (const d of daysArray) {
+        const counts = getLearningCountsForDate(d.dateStr);
+        if (counts.normalCount > 0 || counts.extraCount > 0) {
+            promises.push(saveLearningHistoryToGAS(d.dateStr));
+        }
+    }
+    await Promise.all(promises);
+}
+
+function updateTodayPlan() {
+    if (daysArray.length === 0) return;
+    const todayStr = getLocalDateString(new Date());
+    const todayObj = daysArray.find(d => d.dateStr === todayStr);
+
+    if (!todayObj) {
+        renderChecker();
+        updateDashboard();
+        return;
+    }
+
+    renderChecker();
+    renderCalendar();
+    updateDashboard();
+}
+
+function resetSavedPlan() {
+    if (confirm("•Û‘¶‚³‚ê‚Ä‚¢‚éŒv‰æ‚Æi’»—š—ğ‚ğíœ‚µ‚Ä‚â‚è’¼‚µ‚Ü‚·‚©H")) {
+        localStorage.removeItem('studyPlanData');
+        location.reload();
+    }
+}
+
+/* --- ƒ^ƒCƒ}[‹@”\ --- */
+function updateTimerDisplay() {
+    const mins = Math.floor(timerSeconds / 60);
+    const secs = timerSeconds % 60;
+    document.getElementById('timer-display').innerText = 
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function startTimer() {
+    if (isTimerRunning) return;
+    isTimerRunning = true;
+    timerInterval = setInterval(() => {
+        if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerDisplay();
+        } else {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            alert("25•ªŠÔ‚ÌW’†ƒ^ƒCƒ€‚ªI—¹‚µ‚Ü‚µ‚½I‹xŒe‚µ‚Ü‚µ‚å‚¤B");
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+}
+
+function resetTimer() {
+    stopTimer();
+    timerSeconds = 25 * 60;
+    updateTimerDisplay();
+}
+
+/* --- ƒKƒCƒhig‚¢•ûj‚ğŠJ‚¢‚ÄˆÚ“® --- */
+function openGuide() {
+    if (currentScreen !== "study") {
+        showStudyPage();
+    }
+    const guideBox = document.getElementById('guide-box');
+    const guideToggle = document.getElementById('guide-toggle');
+    
+    if (guideBox) {
+        guideBox.style.display = 'block';
+    }
+    if (guideToggle) {
+        guideToggle.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+/* --- ƒKƒCƒh•\¦Ø‘Öiƒ{ƒ^ƒ“—pj --- */
+function toggleGuide() {
+    const guide = document.getElementById('guide-box');
+    guide.style.display = (guide.style.display === 'none' || guide.style.display === '') ? 'block' : 'none';
+}
+
+/* --- İ’èƒGƒŠƒA‚ğŠJ‚¢‚ÄˆÚ“® --- */
+function openSettings() {
+    if (currentScreen !== "study") {
+        showStudyPage();
+    }
+    const modeSec = document.getElementById('display-mode-section');
+    const formSec = document.getElementById('form-section');
+    const btn = document.getElementById('setting-toggle-btn');
+
+    if (modeSec) modeSec.style.display = 'block';
+    if (formSec) formSec.style.display = 'block';
+    if (btn && btn.style.display !== 'none') {
+        btn.textContent = '£ ŠwKğŒ‚Ìİ’è‚ğ•Â‚¶‚é';
+    }
+
+    const target = (btn && btn.style.display !== 'none') ? btn : (modeSec || formSec);
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+/* --- İ’èƒGƒŠƒA‚ÌÜ‚è‚½‚½‚İŠJ•Â --- */
+function toggleSettings() {
+    const modeSec = document.getElementById('display-mode-section');
+    const formSec = document.getElementById('form-section');
+    const btn = document.getElementById('setting-toggle-btn');
+    
+    if (!formSec || !btn) return;
+
+    if (formSec.style.display === 'none' || formSec.style.display === '') {
+        if (modeSec) modeSec.style.display = 'block';
+        formSec.style.display = 'block';
+        btn.textContent = '£ ŠwKğŒ‚Ìİ’è‚ğ•Â‚¶‚é';
+    } else {
+        if (modeSec) modeSec.style.display = 'none';
+        formSec.style.display = 'none';
+        btn.textContent = '¥ ŠwKğŒ‚Ìİ’èiŒv‰æ‚Ì•ÏXj‚ğŠJ‚­';
+    }
+}
+
+/* Œv‰æ‚Ì—L–³‚É‰‚¶‚½İ’èƒGƒŠƒA‚Ì‰Šú•\¦§Œä */
+function updateSettingVisibility() {
+    const modeSec = document.getElementById('display-mode-section');
+    const formSec = document.getElementById('form-section');
+    const btn = document.getElementById('setting-toggle-btn');
+
+    if (!btn || !formSec) return;
+
+    // ŠwKŒv‰æistudyj‰æ–ÊˆÈŠO‚Ì‚Æ‚«‚Íâ‘Î‚É”ñ•\¦
+    if (currentScreen !== "study") {
+        btn.style.display = 'none';
+        if (modeSec) modeSec.style.display = 'none';
+        formSec.style.display = 'none';
+        return;
+    }
+
+    if (daysArray && daysArray.length > 0) {
+        btn.style.display = 'block';
+        if (modeSec) modeSec.style.display = 'none';
+        formSec.style.display = 'none';
+        btn.textContent = '¥ ŠwKğŒ‚Ìİ’èiŒv‰æ‚Ì•ÏXj‚ğŠJ‚­';
+    } else {
+        btn.style.display = 'none';
+        if (modeSec) modeSec.style.display = 'block';
+        formSec.style.display = 'block';
+    }
+}
+
+function updateWeakSubjectOptions() {
+    const rawInput = document.getElementById('subject-input').value;
+    const subjects = rawInput.split(/[,A]/).map(s => s.trim()).filter(s => s.length > 0);
+    const container = document.getElementById('weak-subjects-checkboxes');
+    
+    const checked = [];
+    container.querySelectorAll('input:checked').forEach(cb => checked.push(cb.value));
+
+    container.innerHTML = '';
+    subjects.forEach(sub => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = sub;
+        if (checked.includes(sub) || weakSubjectsGlobal.includes(sub)) cb.checked = true;
+
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(` ${sub}`));
+        container.appendChild(label);
+    });
+}
+
+function renderMiniCalendarPicker() {
+    const container = document.getElementById('mini-calendar-picker');
+    container.innerHTML = '';
+
+    const testDateVal = document.getElementById('test-date').value;
+    if (!testDateVal) return;
+
+    const testDate = new Date(testDateVal);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let current = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endMonth = new Date(testDate.getFullYear(), testDate.getMonth(), 1);
+    const testDateStr = getLocalDateString(testDate);
+
+    while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth();
+
+        const monthHeader = document.createElement('div');
+        monthHeader.className = 'mini-month-header';
+        monthHeader.innerText = `${year}”N ${month + 1}Œ`;
+        container.appendChild(monthHeader);
+
+        const grid = document.createElement('div');
+        grid.className = 'mini-calendar-grid';
+
+        const weekDays = ['“ú', 'Œ', '‰Î', '…', '–Ø', '‹à', '“y'];
+        weekDays.forEach(wd => {
+            const head = document.createElement('div');
+            head.className = 'mini-header-day';
+            head.innerText = wd;
+            grid.appendChild(head);
+        });
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'mini-day empty';
+            grid.appendChild(empty);
+        }
+
+        for (let day = 1; day <= totalDaysInMonth; day++) {
+            const cellDate = new Date(year, month, day);
+            const cellDateStr = getLocalDateString(cellDate);
+            const dayCell = document.createElement('div');
+            dayCell.className = 'mini-day';
+
+            const isTest = cellDateStr === testDateStr;
+            const isOff = selectedOffDays.includes(cellDateStr);
+            const isOutOfRange = cellDate < today || cellDate > testDate;
+
+            dayCell.innerText = `${day}`;
+
+            if (isOutOfRange) {
+                dayCell.classList.add('disabled');
+            } else if (isTest) {
+                dayCell.classList.add('test-day');
+                dayCell.innerText += ' (ƒeƒXƒg)';
+            } else {
+                if (isOff) dayCell.classList.add('off');
+
+                dayCell.onclick = function() {
+                    if (selectedOffDays.includes(cellDateStr)) {
+                        selectedOffDays = selectedOffDays.filter(d => d !== cellDateStr);
+                        dayCell.classList.remove('off');
+                    } else {
+                        selectedOffDays.push(cellDateStr);
+                        dayCell.classList.add('off');
+                    }
+                };
+            }
+
+            grid.appendChild(dayCell);
+        }
+
+        container.appendChild(grid);
+        current.setMonth(current.getMonth() + 1);
+    }
+}
+
+function updateDashboard() {
+    const testDateVal = document.getElementById('test-date').value;
+    const daysLeftElem = document.getElementById('dash-days-left');
+    const todayTasksElem = document.getElementById('dash-today-tasks');
+
+    if (testDateVal) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const target = new Date(testDateVal);
+        const diffTime = target - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        daysLeftElem.innerText = diffDays > 0 ? `${diffDays} “ú` : "–{“ú–{”ÔI";
+    } else {
+        daysLeftElem.innerText = "-- “ú";
+    }
+    
+    const todayStr = getLocalDateString(new Date());
+    const todayObj = daysArray.find(d => d.dateStr === todayStr);
+
+    if (todayObj && todayObj.tasks) {
+        todayTasksElem.innerText = `${todayObj.tasks.length} ƒRƒ}`;
+    } else {
+        todayTasksElem.innerText = "0 ƒRƒ}";
+    }
+}
+
+/* --- Œv‰æ•\‚Ì©“®¶¬ƒ{ƒ^ƒ“ --- */
+async function generatePlan() {
+    const testDateVal = document.getElementById('test-date').value;
+    if (!testDateVal) {
+        alert("ƒeƒXƒg“ú‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B");
+        return;
+    }
+
+    testDateGlobal = new Date(testDateVal);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    if (testDateGlobal <= today) {
+        alert("ƒeƒXƒg“ú‚Í–¾“úˆÈ~‚Ì“ú•t‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢B");
+        return;
+    }
+
+    const rawSubjects = document.getElementById('subject-input').value;
+    baseSubjectsGlobal = rawSubjects.split(/[,A]/).map(s => s.trim()).filter(s => s.length > 0);
+    
+    if (baseSubjectsGlobal.length === 0) {
+        alert("‹³‰È‚ğ1‚ÂˆÈã“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B");
+        return;
+    }
+
+    weakSubjectsGlobal = [];
+    document.querySelectorAll('#weak-subjects-checkboxes input:checked').forEach(cb => {
+        weakSubjectsGlobal.push(cb.value);
+    });
+
+    defaultDailyHours = parseInt(document.getElementById('daily-hours').value) || 2;
+
+    daysArray = [];
+    let curr = new Date(today);
+    while (curr <= testDateGlobal) {
+        const dateStr = getLocalDateString(curr);
+        const isTest = dateStr === getLocalDateString(testDateGlobal);
+        const isOff = selectedOffDays.includes(dateStr);
+
+        daysArray.push({
+            dateStr: dateStr,
+            isTestDay: isTest,
+            isOffDay: isOff,
+            customHours: undefined,
+            tasks: []
+        });
+
+        curr.setDate(curr.getDate() + 1);
+    }
+
+    reallocatePlan(true);
+
+    document.getElementById('result-layout')
+        .style.setProperty('display', 'grid', 'important');
+    document.getElementById('reset-plan-btn').style.display = 'block';
+    renderCalendar();
+    renderChecker();
+    updateDashboard();
+
+  const saved = await saveData();
+
+updateSettingVisibility();
+
+if (!saved) {
+    alert("Œv‰æ•\‚ğ•Û‘¶‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B");
+    return;
+}
+
+document.getElementById('result-layout')
+    .scrollIntoView({ behavior: 'smooth' });
+}
+
+/* --- Œv‰æ‚ÌŠ„‚è“–‚Äˆ— --- */
+function reallocatePlan(isNewPlan = false) {
+    const planType = 'transfer';
+    const weakRatioInput = document.querySelector('input[name="weakRatio"]:checked');
+    const weakMultiplier = weakRatioInput ? parseFloat(weakRatioInput.value) : 2.0;
+
+    const weights = {};
+    let totalWeight = 0;
+    baseSubjectsGlobal.forEach(sub => {
+        const weight = weakSubjectsGlobal.includes(sub) ? weakMultiplier : 1;
+        weights[sub] = weight;
+        totalWeight += weight;
+    });
+
+    const availableDays = daysArray.filter(d => !d.isTestDay && !d.isOffDay);
+    const totalDaysCount = daysArray.filter(d => !d.isTestDay).length;
+
+    let totalTargetSlots = totalDaysCount * defaultDailyHours;
+
+    if (isNewPlan || studyPool.length === 0) {
+        let allocatedSlots = {};
+        if (totalTargetSlots >= baseSubjectsGlobal.length) {
+            let remaining = totalTargetSlots - baseSubjectsGlobal.length;
+            baseSubjectsGlobal.forEach(sub => {
+                allocatedSlots[sub] = 1;
+            });
+
+            if (remaining > 0) {
+                let extraSum = 0;
+                baseSubjectsGlobal.forEach(sub => {
+                    const ratio = weights[sub] / totalWeight;
+                    const extra = Math.round(remaining * ratio);
+                    allocatedSlots[sub] += extra;
+                    extraSum += extra;
+                });
+
+                let diff = (baseSubjectsGlobal.length + extraSum) - totalTargetSlots;
+                if (diff !== 0 && baseSubjectsGlobal.length > 0) {
+                    allocatedSlots[baseSubjectsGlobal[0]] -= diff;
+                }
+            }
+        } else {
+            baseSubjectsGlobal.forEach(sub => {
+                allocatedSlots[sub] = 1;
+            });
+        }
+
+        studyPool = [];
+        baseSubjectsGlobal.forEach(sub => {
+            const count = allocatedSlots[sub] || 1;
+            for (let i = 0; i < count; i++) {
+                studyPool.push(sub);
+            }
+        });
+
+        shuffleArray(studyPool);
+    }
+
+    let poolIndex = 0;
+
+    daysArray.forEach(d => {
+        if (d.isTestDay) {
+            d.tasks = [{ subject: 'š ƒeƒXƒg–{”ÔI', done: false, isTest: true }];
+            return;
+        }
+
+        if (d.isOffDay) {
+            d.tasks = [];
+            return;
+        }
+
+        let hours = defaultDailyHours;
+        if (availableDays.length > 0) {
+            const baseH = Math.floor(totalTargetSlots / availableDays.length);
+            const remainder = totalTargetSlots % availableDays.length;
+            const dayIndex = availableDays.indexOf(d);
+            hours = dayIndex < remainder ? baseH + 1 : baseH;
+        }
+
+        if (d.customHours !== undefined) {
+            hours = d.customHours;
+        }
+
+        const oldDoneMap = {};
+        if (d.tasks) {
+            d.tasks.forEach(t => { 
+                oldDoneMap[t.subject] = t.done;
+            });
+        }
+
+        let randomSubjects = shuffleArray([...baseSubjectsGlobal]);
+
+        d.tasks = [];
+        for (let h = 0; h < hours; h++) {
+            let sub = "";
+
+            if (poolIndex < studyPool.length) {
+                sub = studyPool[poolIndex];
+                poolIndex++;
+            } else {
+                sub = randomSubjects[h % randomSubjects.length];
+            }
+
+            d.tasks.push({
+                subject: sub,
+                done: oldDoneMap[sub] !== undefined ? oldDoneMap[sub] : false
+            });
+        }
+    });
+}
+
+/* --- ƒ`ƒFƒbƒJ[‚Ìƒ`ƒFƒbƒNØ‚è‘Ö‚¦ --- */
+async function toggleTaskDone(dateStr, taskIndex) {
+    const dayObj = daysArray.find(d => d.dateStr === dateStr);
+
+    if (dayObj && dayObj.tasks[taskIndex]) {
+        const task = dayObj.tasks[taskIndex];
+        const wasDone = task.done;
+
+        task.done = !task.done;
+
+        if (!wasDone && task.done) {
+            if (task.isExtra) {
+                totalExtraCount++;
+            } else {
+                totalCompletedCount++;
+            }
+        }
+
+        if (wasDone && !task.done) {
+            if (task.isExtra) {
+                totalExtraCount--;
+            } else {
+                totalCompletedCount--;
+            }
+        }
+
+        renderChecker();
+		renderCalendar();
+		renderMyPage();
+
+		const planSaved = await saveData();
+
+if (!planSaved) {
+    // •Û‘¶‚Å‚«‚È‚©‚Á‚½‚Ì‚ÅAGAS‚ÌÅVó‘Ô‚É–ß‚·
+    await loadPlanFromGAS();
+    await loadStatusFromGAS();
+    return;
+}
+
+await saveStatusToGAS();
+		
+        const historySaved = await saveLearningHistoryToGAS(dateStr);
+
+        if (historySaved) {
+            await loadStreakFromGAS();
+        }
+    }
+}
+
+
+function addExtraStudy() {
+    const todayStr = getLocalDateString(new Date());
+    const todayObj = daysArray.find(d => d.dateStr === todayStr);
+
+    if (!todayObj) {
+        alert("¡“ú‚ÌŠwKŒv‰æ‚ª‚ ‚è‚Ü‚¹‚ñI");
+        return;
+    }
+
+    if (todayObj.isTestDay) {
+        alert("¡“ú‚ÍƒeƒXƒg–{”Ô‚È‚Ì‚ÅA’Ç‰Á‚Ì•×‹­‚Í‚Å‚«‚Ü‚¹‚ñI");
+        return;
+    }
+
+    if (todayObj.isOffDay) {
+        alert("¡“ú‚Í‚¨‹x‚İ‚Ì“ú‚Å‚·I");
+        return;
+    }
+
+    const todaySubjects = todayObj.tasks
+        .filter(task => !task.isTest)
+        .map(task => task.subject);
+
+    let candidates = baseSubjectsGlobal.filter(
+        subject => !todaySubjects.includes(subject)
+    );
+
+    if (candidates.length === 0) {
+        candidates = [...baseSubjectsGlobal];
+    }
+
+    const subject = candidates[
+        Math.floor(Math.random() * candidates.length)
+    ];
+
+    todayObj.tasks.push({
+        subject: subject,
+        done: false,
+        isExtra: true
+    });
+
+    renderChecker();
+    renderCalendar();
+    updateDashboard();
+
+    saveData();
+
+    alert(`${subject}‚ğ’Ç‰Á‚µ‚Ü‚µ‚½I`);
+}
+
+function renderChecker() {
+    const todayStr = getLocalDateString(new Date());
+    
+    const todayBox = document.getElementById('today-tasks-box');
+    const upcomingBox = document.getElementById('upcoming-tasks-box');
+    const pastBox = document.getElementById('past-tasks-box');
+
+    if (todayBox) todayBox.innerHTML = '';
+    if (upcomingBox) upcomingBox.innerHTML = '';
+    if (pastBox) pastBox.innerHTML = '';
+
+    let totalTasks = 0;
+    let checkedTasks = 0;
+
+    daysArray.forEach(d => {
+        if (d.isTestDay) return;
+
+        d.tasks.forEach((task, idx) => {
+            totalTasks++;
+            if (task.done) checkedTasks++;
+
+            const item = document.createElement('div');
+            item.className = 'checker-item';
+
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = task.done;
+            cb.onchange = () => toggleTaskDone(d.dateStr, idx);
+
+            const dateBadge = document.createElement('span');
+            dateBadge.className = 'task-date-badge';
+            dateBadge.innerText = d.dateStr;
+
+            const subjectText = document.createElement('span');
+            subjectText.className = 'task-subject-text';
+            if (task.done) subjectText.classList.add('done');
+            subjectText.innerText = task.subject;
+
+            label.appendChild(cb);
+            label.appendChild(dateBadge);
+            label.appendChild(subjectText);
+            item.appendChild(label);
+
+            if (d.dateStr === todayStr) {
+                if (todayBox) todayBox.appendChild(item);
+            } else if (d.dateStr > todayStr) {
+                if (upcomingBox) upcomingBox.appendChild(item);
+            } else {
+                if (pastBox) pastBox.appendChild(item);
+            }
+        });
+    });
+
+    if (todayBox && todayBox.children.length === 0) {
+        todayBox.innerHTML = '<p class="empty-msg">¡“ú‚Ì•×‹­ƒ^ƒXƒN‚Í‚ ‚è‚Ü‚¹‚ñi‚¨‹x‚İ‚Ü‚½‚ÍƒeƒXƒg“új</p>';
+    }
+
+    const percent = totalTasks > 0 ? Math.round((checkedTasks / totalTasks) * 100) : 0;
+    const percentDisp = document.getElementById('percent-disp');
+    const barFillDisp = document.getElementById('bar-fill-disp');
+    if (percentDisp) percentDisp.innerText = `${checkedTasks} / ${totalTasks} ƒRƒ} (${percent}%)`;
+    if (barFillDisp) barFillDisp.style.width = `${percent}%`;
+
+    const level = Math.floor(
+        (totalCompletedCount + totalExtraCount) / 3
+    ) + 1;
+
+    let title = "‚Ì‚Ñ‘¾‹‰";
+    if (level >= 15) title = "•×‹­_‹‰";
+    else if (level >= 10) title = "“VË‹‰";
+    else if (level >= 7) title = "GË‹‰";
+    else if (level >= 4) title = "“w—Í‰Æ‹‰";
+    else if (level >= 2) title = "Œ©K‚¢‹‰";
+
+    const levelDisp = document.getElementById('level-disp');
+    if (levelDisp) levelDisp.innerText = `Lv.${level}`;
+
+    const titleDisp = document.getElementById('title-disp');
+    if (titleDisp) titleDisp.innerText = title;
+}
+
+
+function toggleUpcomingSchedule() {
+    const section = document.querySelector(".upcoming-section");
+    const button = document.getElementById("upcoming-toggle-btn");
+    const text = document.getElementById("upcoming-toggle-text");
+
+    if (!section || !button || !text) return;
+
+    const isOpen = section.classList.toggle("is-open");
+
+    button.setAttribute("aria-expanded", String(isOpen));
+
+    text.textContent = isOpen
+        ? "| ‚±‚ê‚©‚ç‚Ì—\’è‚ğ•Â‚¶‚é"
+        : "{ ‚±‚ê‚©‚ç‚Ì—\’è‚ğŒ©‚é";
+}
+
+
+function renderCalendar() {
+    const container = document.getElementById('calendar-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!testDateGlobal || daysArray.length === 0) return;
+
+    const testDateStr = getLocalDateString(testDateGlobal);
+    const todayStr = getLocalDateString(new Date());
+    const startDate = new Date(daysArray[0].dateStr);
+    const endDate = new Date(testDateGlobal);
+
+    let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+    while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth();
+
+        const monthHeader = document.createElement('div');
+        monthHeader.className = 'calendar-month-header';
+        monthHeader.innerText = `${year}”N ${month + 1}Œ`;
+        container.appendChild(monthHeader);
+
+        const grid = document.createElement('div');
+        grid.className = 'calendar-grid';
+
+        const weekDays = ['“ú', 'Œ', '‰Î', '…', '–Ø', '‹à', '“y'];
+        weekDays.forEach(wd => {
+            const head = document.createElement('div');
+            head.className = 'calendar-header-day';
+            head.innerText = wd;
+            grid.appendChild(head);
+        });
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'calendar-day empty';
+            grid.appendChild(empty);
+        }
+
+        for (let day = 1; day <= totalDaysInMonth; day++) {
+            const cellDate = new Date(year, month, day);
+            const cellDateStr = getLocalDateString(cellDate);
+            const dayCell = document.createElement('div');
+            dayCell.className = 'calendar-day';
+
+            const dayObj = daysArray.find(d => d.dateStr === cellDateStr);
+
+            if (cellDateStr === todayStr) dayCell.classList.add('today');
+            if (cellDateStr === testDateStr) dayCell.classList.add('test-day-cell');
+            if (dayObj && dayObj.isOffDay) dayCell.classList.add('off-day');
+
+            if (dayObj && cellDateStr >= todayStr && cellDateStr !== testDateStr) {
+                dayCell.onclick = function() {
+                    let currentHours = dayObj.isOffDay ? 0 : (dayObj.customHours !== undefined ? dayObj.customHours : defaultDailyHours);
+                    let nextHours = (currentHours + 1) % 11;
+
+                    if (nextHours === 0) {
+                        dayObj.isOffDay = true;
+                        dayObj.customHours = 0;
+                        dayObj.tasks = [];
+                    } else {
+                        dayObj.isOffDay = false;
+                        dayObj.customHours = nextHours;
+
+                        let newSubjects = shuffleArray([...baseSubjectsGlobal]);
+                        dayObj.tasks = [];
+                        for (let h = 0; h < nextHours; h++) {
+                            dayObj.tasks.push({
+                                subject: newSubjects[h % newSubjects.length],
+                                done: false
+                            });
+                        }
+                    }
+
+                    reallocatePlan(false);
+                    renderCalendar();
+                    renderChecker();
+                    updateDashboard();
+                    saveData();
+                };
+            }
+
+            const numLabel = document.createElement('div');
+            numLabel.className = 'day-num';
+            if (cellDateStr === todayStr) numLabel.classList.add('today-label');
+            if (cellDateStr === testDateStr) numLabel.classList.add('test-label');
+
+            let labelText = `${day}`;
+            if (cellDateStr === todayStr) labelText += " (¡“ú)";
+            numLabel.innerText = labelText;
+
+            if (dayObj && !dayObj.isOffDay && cellDateStr !== testDateStr) {
+                const hours = dayObj.tasks ? dayObj.tasks.length : defaultDailyHours;
+                const badge = document.createElement('span');
+                badge.className = 'hours-badge';
+                badge.innerText = `${hours}h˜g`;
+                numLabel.appendChild(badge);
+            }
+            dayCell.appendChild(numLabel);
+
+            const taskContainer = document.createElement('div');
+            taskContainer.className = 'task-container';
+
+            if (dayObj) {
+                if (dayObj.isOffDay) {
+                    const el = document.createElement('div');
+                    el.className = 'task-item no-study-day';
+                    el.innerText = "—p–i‚¨‹x‚İj";
+                    taskContainer.appendChild(el);
+                } else {
+                    dayObj.tasks.forEach(task => {
+                        const el = document.createElement('div');
+                        el.className = task.done ? 'task-item done' : 'task-item todo';
+                        el.innerText = `${task.subject} (1h)`;
+                        taskContainer.appendChild(el);
+                    });
+                }
+            } else if (cellDateStr === testDateStr) {
+                const el = document.createElement('div');
+                el.className = 'task-item test-day';
+                el.innerText = "š ƒeƒXƒg–{”ÔI";
+                taskContainer.appendChild(el);
+            }
+
+            dayCell.appendChild(taskContainer);
+            grid.appendChild(dayCell);
+        }
+
+        container.appendChild(grid);
+        current.setMonth(current.getMonth() + 1);
+    }
+}
+
+/* ƒƒOƒCƒ“AV‹K“o˜^AƒpƒXƒ[ƒh•ÏXˆ— */
+
+window.addEventListener("DOMContentLoaded", async function () {
+    const token = localStorage.getItem("sessionToken");
+
+    const gradePage = document.getElementById("grade-select-page");
+    const loginPage = document.getElementById("login-page");
+    const mainPage = document.getElementById("main-page");
+
+    // ”FØŠm”F’†‚ÍƒƒCƒ“‰æ–Ê‚ğ•\¦‚µ‚È‚¢
+    gradePage.style.display = "none";
+    loginPage.style.display = "none";
+    mainPage.style.display = "none";
+
+    if (!token) {
+        clearLoginData();
+        gradePage.style.display = "flex";
+        return;
+    }
+
+    try {
+        const result = await gasRequest("checkSession", {
+            token: token
+        });
+
+        if (!result.success) {
+            clearLoginData();
+            gradePage.style.display = "flex";
+            return;
+        }
+
+        localStorage.setItem("loginUserId", result.userId);
+        localStorage.setItem("loginUserName", result.name);
+        localStorage.setItem("selectedGrade", result.grade);
+
+        mainPage.style.display = "block";
+        showLoginStatus();
+        loadGameModeSetting();
+        await loadPlanFromGAS();
+        await loadStatusFromGAS();
+        await loadStreakFromGAS();
+
+    } catch (error) {
+        console.error("©“®ƒƒOƒCƒ“Šm”FƒGƒ‰[:", error);
+
+        // ’ÊMƒGƒ‰[‚Ìê‡‚Íƒg[ƒNƒ“‚ğÁ‚³‚¸‚Éc‚·
+        gradePage.style.display = "flex";
+    }
+});
+
+
+// ===============================
+// Šw”N‚²‚Æ‚ÌGAS URL
+// ===============================
+let GAS_URL = "";
+
+const NEW_GAS_URL = "https://script.google.com/macros/s/AKfycbz9957OLdGKzmxSg4BlTvh53HZsAYIW60CoecZbDetPemG04IDmYxKhpcey2x9m9FRl/exec";
+
+async function gasRequest(action, data = {}) {
+    const response = await fetch(NEW_GAS_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({
+            ...data,
+            action
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error("’ÊMƒGƒ‰[F" + response.status);
+    }
+
+    return await response.json();
+}
+
+function showMessage(elementId, message, isError = false) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    element.textContent = message;
+
+    element.classList.remove(
+        "message-success",
+        "message-error"
+    );
+
+    element.classList.add(
+        isError ? "message-error" : "message-success"
+    );
+}
+
+// ===============================
+// Šw”N‚ğ‘I‘ğ
+// ===============================
+function selectGrade(grade) {
+    localStorage.setItem("selectedGrade", grade);
+
+    document.getElementById("grade-select-page").style.display = "none";
+    document.getElementById("login-page").style.display = "flex";
+}
+
+
+
+async function login() {
+    const userId = document.getElementById("login-id").value.trim();
+    const password = document.getElementById("login-password").value;
+    const grade = localStorage.getItem("selectedGrade");
+
+    // ‘O‚ÌƒƒbƒZ[ƒW‚ğÁ‚·
+    showMessage("login-error", "");
+
+    if (!grade || !userId || !password) {
+        showMessage(
+            "login-error",
+            "Šw”NEƒ†[ƒU[IDEƒpƒXƒ[ƒh‚ğŠm”F‚µ‚Ä‚ËB",
+            true
+        );
+        return;
+    }
+
+    try {
+        const result = await gasRequest("login", {
+            grade,
+            userId,
+            password
+        });
+
+        if (!result.success) {
+            showMessage(
+                "login-error",
+                result.message || "ƒƒOƒCƒ“‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B",
+                true
+            );
+            return;
+        }
+
+        // ƒƒOƒCƒ“î•ñ‚ğ•Û‘¶
+        localStorage.setItem("loginUserId", result.userId);
+        localStorage.setItem("loginUserName", result.name);
+        localStorage.setItem("selectedGrade", result.grade);
+        localStorage.setItem("sessionToken", result.token);
+
+        // ƒƒCƒ“‰æ–Ê‚ÖˆÚ“®
+        document.getElementById("login-page").style.display = "none";
+        document.getElementById("main-page").style.display = "block";
+        document.getElementById("login-password").value = "";
+
+        showLoginStatus();
+        loadGameModeSetting();
+
+       await loadPlanFromGAS();
+       await loadStatusFromGAS();
+       await loadStreakFromGAS();
+
+    } catch (error) {
+        console.error("ƒƒOƒCƒ“ƒGƒ‰[:", error);
+
+        showMessage(
+            "login-error",
+            "’ÊM‚É¸”s‚µ‚Ü‚µ‚½B",
+            true
+        );
+    }
+}
+
+
+
+function hideAllAuthPages() {
+    document.getElementById("login-page").style.display = "none";
+    document.getElementById("register-page").style.display = "none";
+    document.getElementById("reset-page").style.display = "none";
+}
+
+function showLogin() {
+    hideAllAuthPages();
+    document.getElementById("login-page").style.display = "flex";
+}
+
+function showRegister() {
+    hideAllAuthPages();
+    document.getElementById("register-page").style.display = "flex";
+}
+
+function showResetPassword() {
+    hideAllAuthPages();
+    document.getElementById("reset-page").style.display = "flex";
+}
+
+
+
+async function registerUser() {
+    const name = document.getElementById("register-name").value.trim();
+    const userId = document.getElementById("register-id").value.trim();
+    const password = document.getElementById("register-password").value;
+    const grade = localStorage.getItem("selectedGrade");
+
+    // ‘O‚ÌƒƒbƒZ[ƒW‚ğÁ‚·
+    showMessage("register-error", "");
+
+    if (!grade || !name || !userId || !password) {
+        showMessage(
+            "register-error",
+            "‚·‚×‚Ä‚Ì€–Ú‚ğ“ü—Í‚µ‚Ä‚ËB",
+            true
+        );
+        return;
+    }
+
+    if (password.length < 8) {
+        showMessage(
+            "register-error",
+            "ƒpƒXƒ[ƒh‚Í8•¶šˆÈã‚É‚µ‚Ä‚ËB",
+            true
+        );
+        return;
+    }
+
+    try {
+        const result = await gasRequest("register", {
+            grade,
+            name,
+            userId,
+            password
+        });
+
+        if (!result.success) {
+            showMessage(
+                "register-error",
+                result.message || "“o˜^‚É¸”s‚µ‚Ü‚µ‚½B",
+                true
+            );
+            return;
+        }
+
+        // “o˜^¬Œ÷Œã‚ÍƒƒOƒCƒ“‰æ–Ê‚ÖˆÚ“®
+        document.getElementById("register-password").value = "";
+        document.getElementById("login-id").value = userId;
+
+        showLogin();
+
+        // ¬Œ÷ƒƒbƒZ[ƒW‚Í—ÎF
+        showMessage(
+            "login-error",
+            "“o˜^‚Å‚«‚½‚æIƒpƒXƒ[ƒh‚ğ“ü—Í‚µ‚ÄƒƒOƒCƒ“‚µ‚Ä‚ËB",
+            false
+        );
+
+    } catch (error) {
+        console.error("V‹K“o˜^ƒGƒ‰[:", error);
+
+        showMessage(
+            "register-error",
+            "’ÊM‚É¸”s‚µ‚Ü‚µ‚½B",
+            true
+        );
+    }
+}
+
+
+
+function showLoginStatus() {
+    const userName = localStorage.getItem("loginUserName");
+    const status = document.getElementById("login-status");
+
+    if (userName) {
+        status.textContent = `ƒƒOƒCƒ“’†F${userName}‚³‚ñ`;
+    } else {
+        status.textContent = "ƒƒOƒCƒ“’†";
+    }
+}
+
+
+function clearLoginData() {
+    localStorage.removeItem("loginUserId");
+    localStorage.removeItem("loginUserName");
+    localStorage.removeItem("selectedGrade");
+    localStorage.removeItem("sessionToken");
+
+    // ˆÈ‘O‚Ì‹¤’Ê•Û‘¶ƒf[ƒ^‚ğ•\¦‚µ‚È‚¢‚æ‚¤‚É‚·‚é
+    localStorage.removeItem("studyPlanData");
+
+    daysArray = [];
+    studyPool = [];
+    totalCompletedCount = 0;
+    totalExtraCount = 0;
+}
+
+
+async function logout() {
+    const token = localStorage.getItem("sessionToken");
+
+    // æ‚É’[––‚ÌƒƒOƒCƒ“ó‘Ô‚ğÁ‚·
+    clearLoginData();
+
+    document.getElementById("main-page").style.display = "none";
+    document.getElementById("login-page").style.display = "none";
+    document.getElementById("register-page").style.display = "none";
+    document.getElementById("reset-page").style.display = "none";
+    document.getElementById("grade-select-page").style.display = "flex";
+
+    document.getElementById("login-id").value = "";
+    document.getElementById("login-password").value = "";
+    document.getElementById("login-status").textContent = "";
+
+    if (token) {
+        try {
+            await gasRequest("logout", { token });
+        } catch (error) {
+            console.error("GASƒƒOƒAƒEƒgƒGƒ‰[:", error);
+        }
+    }
+}
+
+
+// ===============================
+// ƒXƒe[ƒ^ƒX‚ğGAS‚É•Û‘¶
+// ===============================
+
+async function saveStatusToGAS() {
+    const token = localStorage.getItem("sessionToken");
+    if (!token) return;
+
+    try {
+        const result = await gasRequest("saveStatus", {
+            token: token,
+            completedCount: totalCompletedCount,
+            extraCount: totalExtraCount
+        });
+
+        if (result.success) {
+            console.log("ƒXƒe[ƒ^ƒX‚ğVGAS‚É•Û‘¶‚µ‚Ü‚µ‚½I");
+        } else {
+            console.error("ƒXƒe[ƒ^ƒX•Û‘¶¸”s:", result.message);
+        }
+    } catch (error) {
+        console.error("ƒXƒe[ƒ^ƒX•Û‘¶ƒGƒ‰[:", error);
+    }
+}
+
+
+// ===============================
+// w’è‚µ‚½“ú‚ÌŠwKƒRƒ}”‚ğæ“¾
+// ===============================
+function getLearningCountsForDate(dateStr) {
+    const dayObj = daysArray.find(d => d.dateStr === dateStr);
+
+    if (!dayObj || !dayObj.tasks) {
+        return { normalCount: 0, extraCount: 0 };
+    }
+
+    let normalCount = 0;
+    let extraCount = 0;
+
+    dayObj.tasks.forEach(task => {
+        if (!task.done || task.isTest) return;
+
+        if (task.isExtra) {
+            extraCount++;
+        } else {
+            normalCount++;
+        }
+    });
+
+    return { normalCount, extraCount };
+}
+
+// ===============================
+// ¡“ú‚ÌŠwKƒRƒ}”‚ğæ“¾
+// ===============================
+function getTodayLearningCounts() {
+    const todayStr = getLocalDateString(new Date());
+    return getLearningCountsForDate(todayStr);
+}
+
+// ===============================
+// ŠwK—š—ğ‚ğGAS‚É•Û‘¶
+// ===============================
+
+async function saveLearningHistoryToGAS(dateStr) {
+    const token = localStorage.getItem("sessionToken");
+    if (!token) return;
+
+    const counts = getLearningCountsForDate(dateStr);
+
+    try {
+        const result = await gasRequest("saveLearningHistory", {
+            token: token,
+            date: dateStr,
+            normalCount: counts.normalCount,
+            extraCount: counts.extraCount
+        });
+
+        if (result.success) {
+            console.log(dateStr + "‚ÌŠwK—š—ğ‚ğ•Û‘¶‚µ‚Ü‚µ‚½I");
+        } else {
+            console.error("ŠwK—š—ğ•Û‘¶¸”s:", result.message);
+        }
+
+        return result.success;
+    } catch (error) {
+        console.error("ŠwK—š—ğ•Û‘¶ƒGƒ‰[:", error);
+        return false;
+    }
+}
+
+
+// ===============================
+// ŠwKŒv‰æ‚ğ•Û‘¶
+// ===============================
+
+
+async function saveData() {
+   if (daysArray.length === 0) return false;
+
+    const weakRatioElem = document.querySelector(
+        'input[name="weakRatio"]:checked'
+    );
+
+    const weakRatioVal = weakRatioElem
+        ? weakRatioElem.value
+        : "2.0";
+
+    const dataToSave = {
+        daysArray: daysArray,
+        testDate: testDateGlobal
+            ? getLocalDateString(testDateGlobal)
+            : null,
+        baseSubjects: baseSubjectsGlobal,
+        weakSubjects: weakSubjectsGlobal,
+        defaultDailyHours: defaultDailyHours,
+        selectedOffDays: selectedOffDays,
+        planType: "transfer",
+        displayMode: getSelectedDisplayMode(),
+        weakRatio: weakRatioVal,
+        subjectInputValue:
+            document.getElementById("subject-input").value
+    };
+
+    const userId = localStorage.getItem("loginUserId");
+    const token = localStorage.getItem("sessionToken");
+
+if (!userId || !token) {
+    console.warn("ƒƒOƒCƒ“‚µ‚Ä‚¢‚È‚¢‚½‚ß•Û‘¶‚Å‚«‚Ü‚¹‚ñ");
+    return false;
+}
+
+    try {
+        const result = await gasRequest("savePlan", {
+            token: token,
+            mode: getSelectedDisplayMode() === "game"
+                ? "ƒQ[ƒ€"
+                : "’Êí",
+            displayMode: getSelectedDisplayMode(),
+            testDate: dataToSave.testDate,
+            offDays: selectedOffDays,
+            subjects: baseSubjectsGlobal,
+            weakSubjects: weakSubjectsGlobal,
+            weakRatio: weakRatioVal,
+            defaultDailyHours: defaultDailyHours,
+            planJson: JSON.stringify(dataToSave),
+			planVersion: currentPlanVersion
+        });
+
+        if (result.success) {
+			currentPlanVersion = result.planVersion;
+            localStorage.setItem(
+                "studyPlanData_" + userId,
+                JSON.stringify(dataToSave)
+            );
+
+            console.log("V‚µ‚¢ƒXƒvƒŒƒbƒhƒV[ƒg‚É•Û‘¶‚µ‚Ü‚µ‚½I");
+            return true;
+  } else {
+    if (result.conflict) {
+        alert(
+            "•Ê‚Ì‰æ–Ê‚ÅŠwKŒv‰æ‚ªXV‚³‚ê‚Ä‚¢‚Ü‚·B\n" +
+            "ŒÃ‚¢Œv‰æ‚Åã‘‚«‚µ‚È‚¢‚æ‚¤A•Û‘¶‚ğ’†~‚µ‚Ü‚µ‚½B\n" +
+            "ƒy[ƒW‚ğÄ“Ç‚İ‚İ‚µ‚Ä‚­‚¾‚³‚¢B"
+        );
+    }
+
+    console.error("ŠwKŒv‰æ‚Ì•Û‘¶¸”s:", result.message);
+    return false;
+}
+
+    } catch (error) {
+        console.error("ŠwKŒv‰æ‚Ì•Û‘¶ƒGƒ‰[:", error);
+        return false;
+    }
+}
+
+
+
+function renderMyPage() {
+    const userName = localStorage.getItem("loginUserName") || "ƒQƒXƒg";
+    document.getElementById("mypage-name").textContent = userName;
+
+    document.getElementById("stat-completed").textContent = `${totalCompletedCount} ƒRƒ}`;
+    document.getElementById("stat-extra").textContent = `${totalExtraCount} ƒRƒ}`;
+
+    const totalStudyMinutes = (totalCompletedCount + totalExtraCount) * 60;
+    const totalStudyHours = Math.floor(totalStudyMinutes / 60);
+    const totalStudyMinutesRest = totalStudyMinutes % 60;
+
+    document.getElementById("stat-study-time").textContent =
+        totalStudyMinutesRest === 0
+            ? `${totalStudyHours}ŠÔ`
+            : `${totalStudyHours}ŠÔ${totalStudyMinutesRest}•ª`;
+
+    const totalCount = totalCompletedCount + totalExtraCount;
+    const level = Math.floor(totalCount / 3) + 1;
+
+    document.getElementById("mypage-level-disp").textContent = `Lv.${level}`;
+
+    let title = "‚Ì‚Ñ‘¾‹‰";
+    if (level >= 15) title = "•×‹­_‹‰";
+    else if (level >= 10) title = "“VË‹‰";
+    else if (level >= 7) title = "GË‹‰";
+    else if (level >= 4) title = "“w—Í‰Æ‹‰";
+    else if (level >= 2) title = "Œ©K‚¢‹‰";
+
+    document.getElementById("mypage-title-disp").textContent = title;
+
+    const currentLevelCount = totalCount % 3;
+    const percent = Math.round((currentLevelCount / 3) * 100);
+
+    document.getElementById("mypage-bar-fill-disp").style.width = `${percent}%`;
+    document.getElementById("mypage-percent-disp").textContent = `${totalCount} ƒRƒ}`;
+
+    renderLearningHistory();
+}
+
+// ===============================
+// ƒ}ƒCƒy[ƒWFŠwK‹L˜^‚ğ•\¦
+// ===============================
+function renderLearningHistory() {
+    const container = document.getElementById("learning-history-list");
+    if (!container) return;
+
+    container.innerHTML = "";
+    const records = [];
+
+    daysArray.forEach(day => {
+        if (!day.tasks || day.tasks.length === 0) return;
+
+        const completedTasks = day.tasks.filter(task =>
+            task.done && !task.isTest
+        );
+
+        if (completedTasks.length === 0) return;
+
+        const subjectCounts = {};
+
+        completedTasks.forEach(task => {
+            if (!subjectCounts[task.subject]) {
+                subjectCounts[task.subject] = { normal: 0, extra: 0 };
+            }
+
+            if (task.isExtra) {
+                subjectCounts[task.subject].extra++;
+            } else {
+                subjectCounts[task.subject].normal++;
+            }
+        });
+
+        records.push({
+            date: day.dateStr,
+            subjects: subjectCounts,
+            totalCount: completedTasks.length
+        });
+    });
+
+    records.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (records.length === 0) {
+        container.innerHTML = '<p class="empty-msg">‚Ü‚¾ŠwK‹L˜^‚ª‚ ‚è‚Ü‚¹‚ñB</p>';
+        return;
+    }
+
+    records.forEach(record => {
+        const dateBox = document.createElement("div");
+        dateBox.className = "learning-history-item";
+
+        const dateTitle = document.createElement("h4");
+        const dateParts = record.date.split("-");
+        dateTitle.textContent = `${Number(dateParts[1])}Œ${Number(dateParts[2])}“ú`;
+        dateBox.appendChild(dateTitle);
+
+        Object.entries(record.subjects).forEach(([subject, counts]) => {
+            const row = document.createElement("div");
+            row.className = "learning-history-subject";
+
+            let text = `${subject} ${counts.normal + counts.extra}ƒRƒ}`;
+            if (counts.extra > 0) {
+                text += `i’Ç‰Á ${counts.extra}ƒRƒ}j`;
+            }
+
+            row.textContent = text;
+            dateBox.appendChild(row);
+        });
+
+        const dailyMinutes = record.totalCount * 60;
+        const dailyHours = Math.floor(dailyMinutes / 60);
+        const dailyMinutesRest = dailyMinutes % 60;
+
+        const timeRow = document.createElement("div");
+        timeRow.className = "learning-history-total";
+
+        if (dailyMinutesRest === 0) {
+            timeRow.textContent = `•×‹­ŠÔF${dailyHours}ŠÔ`;
+        } else {
+            timeRow.textContent = `•×‹­ŠÔF${dailyHours}ŠÔ${dailyMinutesRest}•ª`;
+        }
+
+        dateBox.appendChild(timeRow);
+        container.appendChild(dateBox);
+    });
+}
+
+
+/* =========================
+   “_””äŠr‹@”\
+========================= */
+
+let scoreComparisonChart = null;
+
+// ŠwKŒv‰æ‚Åİ’è‚µ‚½‹³‰È‚ğæ“¾
+function getScoreComparisonSubjects() {
+    const subjectSet = new Set();
+
+    // ŠwKŒv‰æ‚Ì‹³‰È“ü—Í—“‚©‚çæ“¾
+    const subjectInput = document.getElementById("subjects");
+
+    if (subjectInput && subjectInput.value.trim()) {
+        subjectInput.value
+            .split(/[,CA\n]/)
+            .map(subject => subject.trim())
+            .filter(Boolean)
+            .forEach(subject => subjectSet.add(subject));
+    }
+
+    // ì¬Ï‚İ‚ÌŠwKŒv‰æ‚©‚ç‚àæ“¾
+    if (typeof daysArray !== "undefined" && Array.isArray(daysArray)) {
+        daysArray.forEach(day => {
+            if (!Array.isArray(day.tasks)) return;
+
+            day.tasks.forEach(task => {
+                if (task.subject && !task.isTest) {
+                    subjectSet.add(task.subject.trim());
+                }
+            });
+        });
+    }
+
+    return [...subjectSet].filter(Boolean);
+}
+
+// ƒ}ƒCƒy[ƒW‚ğŠJ‚¢‚½‚Æ‚«‚É‹³‰È‚Ì“ü—Í—“‚ğì¬
+function renderScoreComparison() {
+    const container = document.getElementById("score-input-list");
+    if (!container) return;
+
+    const subjects = getScoreComparisonSubjects();
+
+    container.innerHTML = "";
+
+    if (subjects.length === 0) {
+        container.innerHTML =
+            '<p class="score-chart-message">' +
+            'æ‚ÉŠwKŒv‰æ‚Å‹³‰È‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢B' +
+            '</p>';
+        return;
+    }
+
+    subjects.forEach((subject, index) => {
+        const card = document.createElement("div");
+        card.className = "score-input-card";
+
+        const name = document.createElement("div");
+        name.className = "score-subject-name";
+        name.textContent = subject;
+
+        const myField = document.createElement("div");
+        myField.className = "score-input-field";
+
+        const myLabel = document.createElement("label");
+        myLabel.textContent = "©•ª‚Ì“_”";
+
+        const myInput = document.createElement("input");
+        myInput.type = "number";
+        myInput.min = "0";
+        myInput.max = "100";
+        myInput.step = "1";
+        myInput.placeholder = "0`100";
+        myInput.id = `my-score-${index}`;
+        myInput.setAttribute("aria-label", subject + "‚Ì©•ª‚Ì“_”");
+
+        myField.appendChild(myLabel);
+        myField.appendChild(myInput);
+
+        const averageField = document.createElement("div");
+        averageField.className = "score-input-field";
+
+        const averageLabel = document.createElement("label");
+        averageLabel.textContent = "•½‹Ï“_";
+
+        const averageInput = document.createElement("input");
+        averageInput.type = "number";
+        averageInput.min = "0";
+        averageInput.max = "100";
+        averageInput.step = "1";
+        averageInput.placeholder = "0`100";
+        averageInput.id = `average-score-${index}`;
+        averageInput.setAttribute("aria-label", subject + "‚Ì•½‹Ï“_");
+
+        averageField.appendChild(averageLabel);
+        averageField.appendChild(averageInput);
+
+        card.appendChild(name);
+        card.appendChild(myField);
+        card.appendChild(averageField);
+
+        container.appendChild(card);
+    });
+
+    // ‹³‰È‚Ì•ÏXŒã‚ÉŒÃ‚¢ƒ`ƒƒ[ƒg‚ğc‚³‚È‚¢
+    if (scoreComparisonChart) {
+        scoreComparisonChart.destroy();
+        scoreComparisonChart = null;
+    }
+
+    const message = document.getElementById("score-chart-message");
+    if (message) {
+        message.textContent =
+            "“_”‚ğ“ü—Í‚µ‚Äƒ`ƒƒ[ƒg‚ğ•\¦‚µ‚Ä‚ËB";
+    }
+}
+
+// ƒ`ƒƒ[ƒg‚ğ•\¦
+function showScoreChart() {
+    if (typeof Chart === "undefined") {
+        alert("ƒOƒ‰ƒt‹@”\‚ğ“Ç‚İ‚ß‚Ü‚¹‚ñ‚Å‚µ‚½BƒCƒ“ƒ^[ƒlƒbƒgÚ‘±‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢B");
+        return;
+    }
+
+    const subjects = getScoreComparisonSubjects();
+
+    if (subjects.length === 0) {
+        alert("ŠwKŒv‰æ‚Å‹³‰È‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢B");
+        return;
+    }
+
+    const myScores = [];
+    const averageScores = [];
+
+    for (let i = 0; i < subjects.length; i++) {
+        const myInput = document.getElementById(`my-score-${i}`);
+        const averageInput = document.getElementById(`average-score-${i}`);
+
+        if (!myInput || !averageInput) {
+            renderScoreComparison();
+            alert("‹³‰Èˆê——‚ğXV‚µ‚Ü‚µ‚½B“_”‚ğ‚à‚¤ˆê“x“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B");
+            return;
+        }
+
+        const myValue = myInput.value.trim();
+        const averageValue = averageInput.value.trim();
+
+        if (myValue === "" || averageValue === "") {
+            alert(`${subjects[i]}‚Ì©•ª‚Ì“_”‚Æ•½‹Ï“_‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B`);
+            return;
+        }
+
+        const myScore = Number(myValue);
+        const averageScore = Number(averageValue);
+
+        if (
+            !Number.isFinite(myScore) ||
+            !Number.isFinite(averageScore) ||
+            myScore < 0 || myScore > 100 ||
+            averageScore < 0 || averageScore > 100
+        ) {
+            alert("“_”‚Í0`100‚Ì”ÍˆÍ‚Å“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B");
+            return;
+        }
+
+        myScores.push(myScore);
+        averageScores.push(averageScore);
+    }
+	// æ‚Éƒ`ƒƒ[ƒg‰æ–Ê‚ğ•\¦‚·‚é
+document.getElementById("score-input-view").hidden = true;
+document.getElementById("score-chart-view").hidden = false;
+
+    const canvas = document.getElementById("score-comparison-chart");
+    const context = canvas.getContext("2d");
+
+    if (scoreComparisonChart) {
+        scoreComparisonChart.destroy();
+    }
+
+    scoreComparisonChart = new Chart(context, {
+        type: "radar",
+        data: {
+            labels: subjects,
+            datasets: [
+                {
+                    label: "©•ª‚Ì“_”",
+                    data: myScores,
+                    borderColor: "#4285f4",
+                    backgroundColor: "rgba(66, 133, 244, 0.15)",
+                    pointBackgroundColor: "#4285f4",
+                    borderWidth: 2
+                },
+                {
+                    label: "•½‹Ï“_",
+                    data: averageScores,
+                    borderColor: "#22c55e",
+                    backgroundColor: "rgba(34, 197, 94, 0.12)",
+                    pointBackgroundColor: "#22c55e",
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1,
+            scales: {
+                r: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20,
+                        backdropColor: "transparent",
+                        font: {
+                            size: 10
+                        }
+                    },
+                    pointLabels: {
+                        font: {
+                            size: window.innerWidth <= 480 ? 10 : 12
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        boxWidth: 14,
+                        padding: 12,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+const message = document.getElementById("score-chart-message");
+if (message) {
+    message.textContent = "©•ª‚Ì“_”‚Æ•½‹Ï“_‚ğ”äŠr‚µ‚Ä‚¢‚Ü‚·B";
+}
+}
+
+function editScoreInputs() {
+    const inputView = document.getElementById("score-input-view");
+    const chartView = document.getElementById("score-chart-view");
+
+    if (!inputView || !chartView) return;
+
+    // ƒ`ƒƒ[ƒg‚ğ‰B‚µ‚Ä“ü—Í‰æ–Ê‚É–ß‚é
+    chartView.hidden = true;
+    inputView.hidden = false;
+}
+
+
+
+function showMyPage() {
+    currentScreen = "mypage";
+
+    document.getElementById("practice-page").style.display = "none";
+
+    document.querySelector(".main-title").style.display = "none";
+    document.querySelector(".nav-menu").style.display = "none";
+    document.getElementById("hero").style.display = "none";
+    document.querySelector(".guide-toggle-btn").style.display = "none";
+    document.getElementById("guide-box").style.display = "none";
+
+    // İ’èƒGƒŠƒA‚ÆŠJ•Âƒ{ƒ^ƒ“‚ğŠ®‘S‚É”ñ•\¦
+    updateSettingVisibility();
+
+    document.getElementById("result-layout").style.setProperty("display", "none", "important");
+    document.getElementById("mypage").style.display = "block";
+
+    renderMyPage();
+    initializeManualStudyRecords();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+function showStudyPage() {
+    currentScreen = "study";
+
+    document.getElementById("practice-page").style.display = "none";
+    document.getElementById("mypage").style.display = "none";
+
+    document.querySelector(".main-title").style.display = "block";
+    document.querySelector(".nav-menu").style.display = "flex";
+    document.getElementById("hero").style.display = "block";
+    document.querySelector(".guide-toggle-btn").style.display = "block";
+
+    updateSettingVisibility();
+
+    if (daysArray.length > 0) {
+        document.getElementById("result-layout")
+            .style.setProperty("display", "grid", "important");
+    } else {
+        document.getElementById("result-layout")
+            .style.setProperty("display", "none", "important");
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+// ==========================================
+// —ûK–â‘è
+// ==========================================
 let selectedSubject = "";
 let selectedQuestionCount = 0;
 
@@ -54,7 +2167,7 @@ function startSelectedPractice() {
     const questionData = practiceQuestionData[selectedSubject];
 
     if (!questionData || questionData.length === 0) {
-        alert(`${selectedSubject}ã®å•é¡Œã¯ã¾ã æº–å‚™ä¸­ã§ã™ï¼`);
+        alert(`${selectedSubject}‚Ì–â‘è‚Í‚Ü‚¾€”õ’†‚Å‚·I`);
         return;
     }
 
@@ -66,10 +2179,496 @@ function startSelectedPractice() {
     startPractice();
 }
 
+const practiceQuestions = [ 
+    {
+        question: "‘‰¤‚ğˆŒY‚µ‚Äê§ŒNå§‚ğ”p‚µA‹¤˜a§‚ğ‘Å‚¿—§‚Ä‚½Šv–½‚Í‰½‚Æ‚¢‚¤‚©H",
+        answer: "ƒsƒ…[ƒŠƒ^ƒ“Šv–½",
+        choices: [
+            "ƒsƒ…[ƒŠƒ^ƒ“Šv–½",
+            "–¼—_Šv–½",
+            "µŒŠv–½",
+            "“ñŒŠv–½"
+        ]
+    }
+];
+
+const englishQuestions = [
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "Ÿ‚Ì•¶‚Ì Playing basketball ‚Ì—p–@‚Æ‚µ‚Ä³‚µ‚¢‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©BPlaying basketball is fun.",
+        choices: [
+            "åŒê",
+            "•âŒê",
+            "–Ú“IŒê",
+            "‘O’uŒ‚Ì–Ú“IŒê"
+        ],
+        answer: "åŒê",
+        explanation: "Playing basketball ‚ÍuƒoƒXƒPƒbƒgƒ{[ƒ‹‚ğ‚·‚é‚±‚Æv‚Æ‚¢‚¤ˆÓ–¡‚ÅA•¶‚ÌåŒê‚É‚È‚Á‚Ä‚¢‚Ü‚·B"
+    }
+];
+
+const mathAQuestions = [
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "1ŒÂ‚ÌƒTƒCƒRƒ‚ğ1‰ñ“Š‚°‚é‚Æ‚«A3‚Ì”{”‚Ì–Ú‚ªo‚éŠm—¦‚ğ‹‚ß‚È‚³‚¢B",
+        choices: ["1/6", "1/3", "1/2", "2/3"],
+        answer: "1/3",
+        explanation: "3‚Ì”{”‚Ì–Ú‚Í3A6‚Ì2’Ê‚èB‘S‘Ì‚Í6’Ê‚è‚È‚Ì‚ÅA2/6=1/3B"
+    }
+];
+
+const mathIIIQuestions = [
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "ŠÖ” \\(y=x\\sqrt{x}\\)$ ‚Ì“±ŠÖ”‚Æ‚µ‚Ä³‚µ‚¢‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "\\(y'=\\sqrt{x}\\)",
+            "\\(y'=\\frac{3}{2}\\sqrt{x}\\)",
+            "\\(y'=2\\sqrt{x}\\)",
+            "\\(y'=3x\\)"
+        ],
+        answer: "\\(y'=\\frac{3}{2}\\sqrt{x}\\)",
+        explanation: "\\(x\\sqrt{x}=x^{\\frac{3}{2}}\\) ‚Æ•ÏŒ`‚·‚é‚ÆA\\(y'=\\frac{3}{2}x^{\\frac{1}{2}}=\\frac{3}{2}\\sqrt{x}\\) ‚Æ‚È‚è‚Ü‚·B"
+    }
+];
+
+
+
+const electronicMeasurementControlQuestions = [
+    // ==========================================
+    // 1ß ƒtƒB[ƒhƒoƒbƒN§Œä‚ÌŠî‘b
+    // ==========================================
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(1) ƒtƒB[ƒhƒoƒbƒN§Œä‚Ìà–¾‚Æ‚µ‚ÄAÅ‚à“KØ‚È‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. §Œä‘ÎÛ‚Ìó‘Ô‚ğŠm”F‚¹‚¸AŒˆ‚ß‚ç‚ê‚½‡˜‚¾‚¯‚Å“®ì‚·‚é",
+            "B. –Ú•W’l‚ÆŒ»İ‚Ìó‘Ô‚ğ”äŠr‚µA‚»‚Ì·‚É‰‚¶‚Ä§Œä“®ì‚ğ’²®‚·‚é",
+            "C. –Ú•W’l‚ğİ’è‚¹‚¸Aí‚ÉÅ‘åo—Í‚Å“®ì‚·‚é",
+            "D. ŠO—‚ª”­¶‚µ‚½‚Æ‚«‚¾‚¯“®ì‚·‚é"
+        ],
+        answer: "B. –Ú•W’l‚ÆŒ»İ‚Ìó‘Ô‚ğ”äŠr‚µA‚»‚Ì·‚É‰‚¶‚Ä§Œä“®ì‚ğ’²®‚·‚é",
+        explanation: "ƒtƒB[ƒhƒoƒbƒN§Œä‚ÍA–Ú•W’l‚ÆÀÛ‚Ìó‘Ô‚ğ”äŠr‚µA‚»‚Ì•Î·‚É‰‚¶‚Ä‘€ì‚ğ’²®‚µ‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(2) §Œä‘ÎÛ‚Ìó‘Ô‚ğŒŸo‚·‚é–ğŠ„‚ğ‚Â‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ”äŠr—v‘f",
+            "B. ‘€ì•”",
+            "C. ŒŸo•”",
+            "D. §Œä‘ÎÛ"
+        ],
+        answer: "C. ŒŸo•”",
+        explanation: "ŒŸo•”‚ÍA‰·“x‚â…ˆÊ‚È‚Ç‚Ìó‘Ô‚ğŒŸo‚µAƒtƒB[ƒhƒoƒbƒNM†‚ğ“¾‚é–ğŠ„‚ğ‚¿‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(3) §Œä‘ÎÛ‚ğœ‚¢‚½A§Œä‚ÉŠÖ‚í‚éŠe—v‘f‚ğ‰½‚ÆŒÄ‚Ñ‚Ü‚·‚©B",
+        choices: [
+            "A. §Œä‘•’u",
+            "B. ŠO—",
+            "C. ‘€ì—Ê",
+            "D. –Ú•W’l"
+        ],
+        answer: "A. §Œä‘•’u",
+        explanation: "‚±‚Ìß‚Å‚ÍA§Œä‘ÎÛˆÈŠO‚Ì§Œä‚ÉŠÖ‚í‚é—v‘f‚ğ§Œä‘•’u‚Æ‚µ‚Ä‚¢‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(4) §Œä‘ÎÛ‚ğœ‚¢‚½A§Œä‚ÉŠÖ‚í‚éŠe—v‘f‚ğ‰½‚ÆŒÄ‚Ñ‚Ü‚·‚©B",
+        choices: [
+            "A. §Œä‘•’u",
+            "B. ŠO—",
+            "C. ‘€ì—Ê",
+            "D. –Ú•W’l"
+        ],
+        answer: "A. §Œä‘•’u",
+        explanation: "‚±‚Ìß‚Å‚ÍA§Œä‘ÎÛˆÈŠO‚Ì§Œä‚ÉŠÖ‚í‚é—v‘f‚ğ§Œä‘•’u‚Æ‚µ‚Ä‚¢‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(5) –Ú•W’lVs=0.80VAƒtƒB[ƒhƒoƒbƒNM†Vp=0.65V‚Ì‚Æ‚«A•Î·e=Vs-Vp‚Í‚¢‚­‚ç‚Å‚·‚©B",
+        choices: [
+            "A. 0.15 V",
+            "B. 1.45 V",
+            "C. -0.15 V",
+            "D. 0.65 V"
+        ],
+        answer: "A. 0.15 V",
+        explanation: "•Î·‚Í–Ú•W’l‚©‚çƒtƒB[ƒhƒoƒbƒNM†‚ğˆø‚«‚Ü‚·Be=0.80-0.65=0.15V‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(6) ƒvƒƒZƒX§Œä‚Ì‘ÎÛ‚Æ‚µ‚Ä³‚µ‚¢‘g‚İ‡‚í‚¹‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ‰tˆÊE‰·“xEpH",
+            "B. ‰tˆÊE‰·“xEƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“x",
+            "C. ‰·“xEƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“xEpH",
+            "D. ‰tˆÊEƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“xEpH"
+        ],
+        answer: "A. ‰tˆÊE‰·“xEpH",
+        explanation: "‰tˆÊE‰·“xEpH‚ÍƒvƒƒZƒX§Œä‚Ì—á‚Å‚·Bƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“x§Œä‚ÍƒT[ƒ{§Œä‚Ì—á‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(7) ’Ç’l§Œä‚Æ‚ÍAŠÔ‚Æ‚Æ‚à‚É•Ï‰»‚·‚é–Ú•W’l‚É’Ç]‚³‚¹‚é§Œä•û®‚Å‚ ‚éB",
+        choices: ["›", "~"],
+        answer: "›",
+        explanation: "’Ç’l§Œä‚Å‚ÍA–Ú•W’l‚ªŠÔ‚Æ‚Æ‚à‚É•Ï‰»‚µA‚»‚Ì•Ï‰»‚É§Œä‘ÎÛ‚ğ’Ç]‚³‚¹‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(8) …ˆÊ‚ª–Ú•W…ˆÊ‚æ‚è’á‚­‚È‚èA•Î·e=Vs-Vp‚ª³‚É‚È‚è‚Ü‚µ‚½B‚±‚Ì‚Æ‚«‚Ì“®ì‚Æ‚µ‚Ä“KØ‚È‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ‹‹…•Ù‚ğŠJ‚«A—¬“ü—Ê‚ğ‘‚â‚·",
+            "B. ‹‹…•Ù‚ğ•Â‚¶A—¬“ü—Ê‚ğŒ¸‚ç‚·",
+            "C. –Ú•W’l‚ğ•K‚¸ƒ[ƒ‚É‚·‚é",
+            "D. ŒŸo•”‚ğ’â~‚·‚é"
+        ],
+        answer: "A. ‹‹…•Ù‚ğŠJ‚«A—¬“ü—Ê‚ğ‘‚â‚·",
+        explanation: "…ˆÊ‚ª–Ú•W‚æ‚è’á‚¢‚Æ‚«‚ÍA‹‹…•Ù‚ğŠJ‚¢‚Ä…‚Ì—¬“ü—Ê‚ğ‘‚â‚µA–Ú•W…ˆÊ‚É‹ß‚Ã‚¯‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(9) “d‹CƒJ[ƒyƒbƒg‚Ì‰·“x§Œä‚ÅA§Œä‚µ‚½‚¢—Ê‚É“–‚½‚é‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ÀÛ‚ÌƒJ[ƒyƒbƒg‚Ì‰·“x",
+            "B. İ’è‰·“x‚ÆÀÛ‚Ì‰·“x‚Ì·‚¾‚¯",
+            "C. Œv‚Ì",
+            "D. ‰·“xƒZƒ“ƒT‚Ìí—Ş"
+        ],
+        answer: "A. ÀÛ‚ÌƒJ[ƒyƒbƒg‚Ì‰·“x",
+        explanation: "§Œä‚µ‚½‚¢—Ê‚ÍƒJ[ƒyƒbƒg‚ÌÀÛ‚Ì‰·“x‚Å‚·Bİ’è‰·“x‚Æ”äŠr‚µ‚Ä‰Á”M‚ğ’²®‚µ‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(10) ƒvƒƒOƒ‰ƒ€§Œä‚Å‚ÍA–Ú•W’l‚ğ‚ ‚ç‚©‚¶‚ß’è‚ß‚½ƒvƒƒOƒ‰ƒ€‚É]‚Á‚Ä•Ï‰»‚³‚¹‚éB",
+        choices: ["›", "~"],
+        answer: "›",
+        explanation: "ƒvƒƒOƒ‰ƒ€§Œä‚Å‚ÍA‚ ‚ç‚©‚¶‚ßŒˆ‚ß‚½–Ú•W’l‚Ì•Ï‰»‚É‰ˆ‚Á‚Ä§Œä‚µ‚Ü‚·B‰Á”M˜F‚Ì‰·“x§Œä‚ª—á‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(11) ƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“x§Œä‚ÅA–Ú•WŠp“x‚ğİ’è‚·‚é‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. P2",
+            "B. ·“®‘•Ší",
+            "C. P1",
+            "D. ƒT[ƒ{ƒ‚[ƒ^"
+        ],
+        answer: "C. P1",
+        explanation: "P1‚Í–Ú•WŠp“x‚ğİ’è‚µ‚Ä–Ú•W’l‚Ì“dˆ³Vs‚ğ—^‚¦‚Ü‚·BP2‚ÍÀÛ‚ÌŠp“x‚ğŒŸo‚µ‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(12) §Œä•û®‚Æ‘ÎÛ‚Ì‘g‚İ‡‚í‚¹‚Æ‚µ‚Ä³‚µ‚¢‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ƒT[ƒ{§Œä\ˆÊ’u‚âŠp“xA©“®’²®\“dˆ³‚â“d—¬",
+            "B. ’è’l§Œä\ŠÔ‚Æ‚Æ‚à‚É•Ï‰»‚·‚é–Ú•W’lAƒvƒƒZƒX§Œä\ƒƒ{ƒbƒgƒA[ƒ€‚ÌŠp“x",
+            "C. ƒT[ƒ{§Œä\“dˆ³‚â“d—¬A©“®’²®\ˆÊ’u‚âŠp“x",
+            "D. ’è’l§Œä\ŠÔ‚Æ‚Æ‚à‚É•Ï‰»‚·‚é–Ú•W’lA©“®’²®\‰tˆÊ‚¾‚¯"
+        ],
+        answer: "A. ƒT[ƒ{§Œä\ˆÊ’u‚âŠp“xA©“®’²®\“dˆ³‚â“d—¬",
+        explanation: "ƒT[ƒ{§Œä‚ÍˆÊ’u‚âŠp“xA©“®’²®‚Í“dˆ³E“d—¬E‘¬“xEü”g”‚È‚Ç‚ª—á‚Å‚·B’è’l§Œä‚Í–Ú•W’l‚ªˆê’è‚Ìê‡‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(13) –Ú•W’lVs=3.0VAƒtƒB[ƒhƒoƒbƒNM†Vp=2.4V‚Ì‚Æ‚«A•Î·e=Vs-Vp‚Í‚¢‚­‚ç‚Å‚·‚©B",
+        choices: [
+            "A. 5.4 V",
+            "B. -0.6 V",
+            "C. 2.4 V",
+            "D. 0.6 V"
+        ],
+        answer: "D. 0.6 V",
+        explanation: "e=3.0-2.4=0.6V‚Å‚·B–Ú•W’l‚©‚çƒtƒB[ƒhƒoƒbƒNM†‚ğˆø‚«‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(14) §Œä‘ÎÛ‚Ìó‘Ô‚É‰e‹¿‚ğ—^‚¦‚éŠO•”‚©‚ç‚Ì—vˆö‚ğ‰½‚ÆŒÄ‚Ñ‚Ü‚·‚©B",
+        choices: [
+            "A. –Ú•W’l",
+            "B. ŠO—",
+            "C. ‘€ì—Ê",
+            "D. ƒtƒB[ƒhƒoƒbƒNM†"
+        ],
+        answer: "B. ŠO—",
+        explanation: "ŠO—‚ÍA§Œä‘ÎÛ‚Ìó‘Ô‚É‰e‹¿‚ğ—^‚¦A§Œä‚ğ“ï‚µ‚­‚·‚é—vˆö‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(15) ƒtƒB[ƒhƒoƒbƒN§Œä‚É‚Â‚¢‚Ä³‚µ‚¢à–¾‚Ì‘g‚İ‡‚í‚¹‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. –Ú•W’l‚ÆƒtƒB[ƒhƒoƒbƒNM†‚ğ”äŠr‚µA•Î·‚É‰‚¶‚Ä§Œä“®ì‚ğ’²®‚·‚é",
+            "B. Œ»İ‚Ìó‘Ô‚ğŒŸo‚¹‚¸A–Ú•W’l‚ğ•K‚¸ƒ[ƒ‚É‚·‚é",
+            "C. •Î·‚ÍƒtƒB[ƒhƒoƒbƒNM†‚©‚ç–Ú•W’l‚ğˆø‚¢‚Ä‹‚ß‚é",
+            "D. ŠO—‚ª”­¶‚µ‚½‚Æ‚«‚¾‚¯ŒŸo•”‚ª“®ì‚·‚é"
+        ],
+        answer: "A. –Ú•W’l‚ÆƒtƒB[ƒhƒoƒbƒNM†‚ğ”äŠr‚µA•Î·‚É‰‚¶‚Ä§Œä“®ì‚ğ’²®‚·‚é",
+        explanation: "ƒtƒB[ƒhƒoƒbƒN§Œä‚Å‚ÍŒ»İ‚Ìó‘Ô‚ğŒŸo‚µA–Ú•W’l‚Æ”äŠr‚µ‚Ü‚·B•Î·‚Íe=Vs-Vp‚Å‹‚ßA‚»‚ÌŒ‹‰Ê‚É‰‚¶‚Ä§Œä“®ì‚ğ’²®‚µ‚Ü‚·B"
+    },
+
+    // ==========================================
+    // 2ß M†‚Ì“`’B‚Æ“`’BŠÖ”
+    // ==========================================
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(16) ƒuƒƒbƒNü}‚ğ—p‚¢‚é–Ú“I‚Æ‚µ‚ÄAÅ‚à“KØ‚È‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. §ŒäƒVƒXƒeƒ€‚ÌŠOŠÏ‚ğÀ•¨‚Æ“¯‚¶‚æ‚¤‚É•`‚­‚½‚ß",
+            "B. §ŒäƒVƒXƒeƒ€‚Ì\¬—v‘f‚ÌŒ‹‡‚âM†‚Ì—¬‚ê‚ğ•ª‚©‚è‚â‚·‚­•\‚·‚½‚ß",
+            "C. §ŒäƒVƒXƒeƒ€‚Ì“d—ÍÁ”ï—Ê‚¾‚¯‚ğ‹‚ß‚é‚½‚ß",
+            "D. §ŒäƒVƒXƒeƒ€‚©‚çƒZƒ“ƒT‚ğ‚È‚­‚·‚½‚ß"
+        ],
+        answer: "B. §ŒäƒVƒXƒeƒ€‚Ì\¬—v‘f‚ÌŒ‹‡‚âM†‚Ì—¬‚ê‚ğ•ª‚©‚è‚â‚·‚­•\‚·‚½‚ß",
+        explanation: "ƒuƒƒbƒNü}‚ÍA§ŒäƒVƒXƒeƒ€‚Ì\¬—v‘f‚âA‚»‚ê‚ç‚ÌŒ‹‡‚Ì‚µ‚©‚½AM†‚Ì—¬‚ê‚ğ•ª‚©‚è‚â‚·‚­•\‚·‚½‚ß‚É—p‚¢‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(17) “ü—ÍM†‚ğXAo—ÍM†‚ğY‚Æ‚µ‚½‚Æ‚«A“`’BŠÖ”H‚ğ•\‚·®‚Æ‚µ‚Ä³‚µ‚¢‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. H = X + Y",
+            "B. H = X - Y",
+            "C. H = Y / X",
+            "D. H = X * Y"
+        ],
+        answer: "C. H = Y / X",
+        explanation: "‚±‚Ì–â‘è‚Åˆµ‚¤“`’BŠÖ”‚ÍAo—ÍM†‚ğ“ü—ÍM†‚ÅŠ„‚Á‚½”ä‚Å‚·B‚µ‚½‚ª‚Á‚ÄH=Y/X‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(18) ‚ ‚é”ä—á—v‘f‚Ì”ä—áƒQƒCƒ“‚ªK=4A“ü—ÍM†‚ªX=3‚Ì‚Æ‚«Ao—ÍM†Y‚Ì’l‚Í‚¢‚­‚Â‚Å‚·‚©B",
+        choices: [
+            "A. 1",
+            "B. 7",
+            "C. 12",
+            "D. 16"
+        ],
+        answer: "C. 12",
+        explanation: "”ä—á—v‘f‚Ìo—ÍM†‚ÍY=K*X‚Å‚·BY=4*3=12‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(19) “`’BŠÖ”‚ªH1AH2‚Ì2‚Â‚ÌƒuƒƒbƒN‚ğ’¼—ñÚ‘±‚µ‚½ê‡A‘S‘Ì‚Ì“`’BŠÖ”‚ÍH1+H2‚Æ‚È‚éB",
+        choices: ["›", "~"],
+        answer: "~",
+        explanation: "’¼—ñÚ‘±‚Å‚ÍAŠeƒuƒƒbƒN‚Ì“`’BŠÖ”‚ğŠ|‚¯‡‚í‚¹‚Ü‚·B‘S‘Ì‚Ì“`’BŠÖ”‚ÍH=H1*H2‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(20) “`’BŠÖ”‚ªH1=2AH2=5‚Ì2‚Â‚ÌƒuƒƒbƒN‚ğ’¼—ñÚ‘±‚µ‚Ü‚µ‚½B‘S‘Ì‚Ì“`’BŠÖ”‚Í‚¢‚­‚Â‚Å‚·‚©B",
+        choices: [
+            "A. 3",
+            "B. 7",
+            "C. 10",
+            "D. 25"
+        ],
+        answer: "C. 10",
+        explanation: "’¼—ñÚ‘±‚Ì‘S‘Ì‚Ì“`’BŠÖ”‚ÍŠeƒuƒƒbƒN‚Ì“`’BŠÖ”‚ÌÏ‚Å‚·BH=2*5=10‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(21) ƒuƒƒbƒNü}‚ÌÚ‘±‚É‚Â‚¢‚Ä³‚µ‚¢à–¾‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. ’¼—ñÚ‘±‚Å‚ÍÏA•À—ñÚ‘±‚Å‰ÁZ‚·‚éê‡‚Í˜aA“™‰¿•ÏŠ·‚ÍƒuƒƒbƒN‚ğ®—‚·‚é‚±‚Æ",
+            "B. ’¼—ñÚ‘±‚Å‚Í˜aA•À—ñÚ‘±‚Å‰ÁZ‚·‚éê‡‚ÍÏA“™‰¿•ÏŠ·‚ÍƒuƒƒbƒN‚ğíœ‚·‚é‚±‚Æ",
+            "C. ’¼—ñÚ‘±‚Å‚Í·A•À—ñÚ‘±‚Å‰ÁZ‚·‚éê‡‚ÍÏA“™‰¿•ÏŠ·‚ÍM†‚ğ~‚ß‚é‚±‚Æ",
+            "D. ’¼—ñÚ‘±‚Å‚ÍÏA•À—ñÚ‘±‚Å‰ÁZ‚·‚éê‡‚Í·A“™‰¿•ÏŠ·‚ÍƒZƒ“ƒT‚ğ‚È‚­‚·‚±‚Æ"
+        ],
+        answer: "A. ’¼—ñÚ‘±‚Å‚ÍÏA•À—ñÚ‘±‚Å‰ÁZ‚·‚éê‡‚Í˜aA“™‰¿•ÏŠ·‚ÍƒuƒƒbƒN‚ğ®—‚·‚é‚±‚Æ",
+        explanation: "’¼—ñÚ‘±‚Ì“`’BŠÖ”‚ÍÏ‚Å‚·B•À—ñÚ‘±‚ÅM†‚ğ‰ÁZ‚·‚éê‡‚Í˜aAŒ¸Z‚·‚éê‡‚Í·‚Å‚·B•¡”‚ÌƒuƒƒbƒN‚ğ“‡‚µ‚Äˆµ‚¢‚â‚·‚­®—‚·‚é‚±‚Æ‚ğ“™‰¿•ÏŠ·‚Æ‚¢‚¢‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(22) ƒuƒƒbƒNü}‚É‚¨‚¯‚éƒtƒB[ƒhƒoƒbƒNÚ‘±‚Ìà–¾‚Æ‚µ‚Ä³‚µ‚¢‚à‚Ì‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. “ü—ÍM†‚ğ•K‚¸ƒ[ƒ‚É‚·‚éÚ‘±",
+            "B. o—ÍM†‚ğ“ü—Í‘¤‚É‹AŠÒ‚³‚¹‚éÚ‘±",
+            "C. ‚·‚×‚Ä‚ÌƒuƒƒbƒN‚ğ•À—ñ‚ÉÚ‘±‚·‚é•û®",
+            "D. M†‚ğ“`’B‚¹‚¸Ao—Í‚¾‚¯‚ğ•\¦‚·‚é•û®"
+        ],
+        answer: "B. o—ÍM†‚ğ“ü—Í‘¤‚É‹AŠÒ‚³‚¹‚éÚ‘±",
+        explanation: "ƒtƒB[ƒhƒoƒbƒNÚ‘±‚ÍAo—ÍM†‚ğ“`’BŠÖ”‚È‚Ç‚ğ’Ê‚µ‚Ä“ü—Í‘¤‚É‹AŠÒ‚³‚¹‚éÚ‘±•û®‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(23) •‰‹AŠÒ‚ÌƒtƒB[ƒhƒoƒbƒNÚ‘±‚ÅA‡•ûŒü‚Ì“`’BŠÖ”P=4A‹AŠÒ‘¤‚Ì“`’BŠÖ”H=1‚Æ‚µ‚Ü‚·B•Âƒ‹[ƒv“`’BŠÖ”Y/X‚Í‚¢‚­‚Â‚Å‚·‚©B®FY/X=P/(1+P*H)",
+        choices: [
+            "A. 1 / 5",
+            "B. 4 / 5",
+            "C. 4",
+            "D. 5"
+        ],
+        answer: "B. 4 / 5",
+        explanation: "Y/X=4/(1+4*1)=4/5=0.8‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(24) “ü—ÍM†‚É”ä—á‚µ‚½—Ê‚ğo—Í‚·‚é—v‘f‚ğ‰½‚Æ‚¢‚¢‚Ü‚·‚©B",
+        choices: [
+            "A. ”÷•ª—v‘f",
+            "B. Ï•ª—v‘f",
+            "C. ”ä—á—v‘f",
+            "D. ƒtƒB[ƒhƒoƒbƒN—v‘f"
+        ],
+        answer: "C. ”ä—á—v‘f",
+        explanation: "”ä—á—v‘f‚ÍA“ü—ÍM†‚ğˆê’è‚Ì”ä—á’è”K”{‚µ‚Äo—Í‚·‚é—v‘f‚Å‚·BŠÖŒW®‚ÍY=K*X‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(25) ”÷•ª—v‘f‚ÍA“ü—ÍM†‚ğŠÔ‚É‚Â‚¢‚Ä”÷•ª‚µ‚½—Ê‚É”ä—á‚·‚éo—Í‚ğ“¾‚é—v‘f‚Å‚ ‚éB",
+        choices: ["›", "~"],
+        answer: "›",
+        explanation: "”÷•ª—v‘f‚ÍA“ü—ÍM†‚ÌŠÔ“I‚È•Ï‰»—¦‚É”ä—á‚µ‚½o—Í‚ğ“¾‚é—v‘f‚Å‚·B—á‚¦‚ÎA•ÏˆÊ‚ğŠÔ‚É‚Â‚¢‚Ä”÷•ª‚·‚é‚Æ‘¬“x‚ª“¾‚ç‚ê‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(26) ‘äÔ‚Ì•ÏˆÊ‚ªX(t)=4*t-t^2‚Å•\‚³‚ê‚Ü‚·B‘¬“x‚Í•ÏˆÊ‚ğŠÔ‚É‚Â‚¢‚Ä”÷•ª‚µ‚Ä‹‚ß‚Ü‚·Bt=1•b‚Ì‚Æ‚«‚Ì‘¬“x‚Í‚¢‚­‚ç‚Å‚·‚©B",
+        choices: [
+            "A. 1 m/s",
+            "B. 2 m/s",
+            "C. 3 m/s",
+            "D. 4 m/s"
+        ],
+        answer: "B. 2 m/s",
+        explanation: "•ÏˆÊ‚ğŠÔ‚É‚Â‚¢‚Ä”÷•ª‚·‚é‚ÆV(t)=4-2*t‚Å‚·Bt=1‚ğ‘ã“ü‚·‚é‚ÆV(1)=4-2*1=2m/s‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(27) Ï•ª—v‘f‚É‚Â‚¢‚Ä³‚µ‚¢à–¾‚Ì‘g‚İ‡‚í‚¹‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. “ü—ÍM†‚ÌŠÔÏ•ª‚É”ä—á‚·‚éo—Í‚ğ“¾‚éB—¬—Ê‚ÌÏ•ª‚Å‘ÌÏA“d—¬‚ÌÏ•ª‚Å“d‰×—Ê‚ğ‹‚ß‚ç‚ê‚é",
+            "B. “ü—ÍM†‚ğŠÔ‚É‚Â‚¢‚Ä”÷•ª‚·‚éB—¬—Ê‚ÌÏ•ª‚Å‘¬“x‚ğ‹‚ß‚ç‚ê‚é",
+            "C. “ü—ÍM†‚ğˆê’è”{‚·‚éB“d—¬‚ÌÏ•ª‚Å’ïR’l‚ğ‹‚ß‚ç‚ê‚é",
+            "D. “ü—ÍM†‚ğŠÔ‚É‚Â‚¢‚ÄÏ•ª‚·‚é‚±‚Æ‚Í‚È‚­A•ÏˆÊ‚Ì”÷•ª‚ÅˆÚ“®‹——£‚ğ‹‚ß‚ç‚ê‚é"
+        ],
+        answer: "A. “ü—ÍM†‚ÌŠÔÏ•ª‚É”ä—á‚·‚éo—Í‚ğ“¾‚éB—¬—Ê‚ÌÏ•ª‚Å‘ÌÏA“d—¬‚ÌÏ•ª‚Å“d‰×—Ê‚ğ‹‚ß‚ç‚ê‚é",
+        explanation: "Ï•ª—v‘f‚Í“ü—ÍM†‚ÌŠÔÏ•ª‚É”ä—á‚·‚éo—Í‚ğ“¾‚Ü‚·B—¬—Ê‚ğÏ•ª‚·‚é‚Æ‘ÌÏA“d—¬‚ğÏ•ª‚·‚é‚Æ“d‰×—Ê‚ğ‹‚ß‚ç‚ê‚Ü‚·B•ÏˆÊ‚ğ”÷•ª‚·‚é‚Æ‘¬“x‚ª“¾‚ç‚ê‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "š™™",
+        question: "(28) ‘äÔ‚ªˆê’è‚Ì‘¬“xV=3m/s‚Å5•bŠÔˆÚ“®‚µ‚Ü‚µ‚½BˆÚ“®‹——£X‚Í‚¢‚­‚ç‚Å‚·‚©B",
+        choices: [
+            "A. 8 m",
+            "B. 10 m",
+            "C. 15 m",
+            "D. 20 m"
+        ],
+        answer: "C. 15 m",
+        explanation: "ˆê’è‘¬“x‚Ìê‡AˆÚ“®‹——£‚ÍX=V*t‚Å‹‚ß‚ç‚ê‚Ü‚·BX=3*5=15m‚Å‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(29) ‚Î‚Ë’è”‚ğKpA‚Î‚Ë‚Ì•ÏˆÊ‚ğXA‚Î‚Ë‚ªó‚¯‚é—Í‚ğF‚Æ‚µ‚Ü‚·B³‚µ‚¢ŠÖŒW®‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. F = X / Kp",
+            "B. F = Kp * X",
+            "C. F = Kp + X",
+            "D. F = Kp - X"
+        ],
+        answer: "B. F = Kp * X",
+        explanation: "‚Î‚Ë‚ªó‚¯‚é—Í‚ÍA‚Î‚Ë‚Ì•ÏˆÊ‚É‚Î‚Ë’è”‚ğŠ|‚¯‚½’l‚Å‚·BF=Kp*X‚Æ‚È‚è‚Ü‚·B"
+    },
+    {
+        type: "‘I‘ğ®",
+        level: "šš™",
+        question: "(30) “d‹CŒnƒ‚ƒfƒ‹‚Æ‹@ŠBŒnƒ‚ƒfƒ‹‚Ì‘Î‰ŠÖŒW‚É‚Â‚¢‚Ä³‚µ‚¢à–¾‚Ì‘g‚İ‡‚í‚¹‚Í‚Ç‚ê‚Å‚·‚©B",
+        choices: [
+            "A. “dˆ³‚Í—Í‚âƒgƒ‹ƒNA“d—¬‚Í‘¬“x‚âŠp‘¬“xAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í¿—Ê‚âŠµ«ƒ‚[ƒƒ“ƒg‚É‘Î‰‚·‚é",
+            "B. “dˆ³‚Í‘¬“x‚âŠp‘¬“xA“d—¬‚Í—Í‚âƒgƒ‹ƒNAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í•ÏˆÊ‚É‘Î‰‚·‚é",
+            "C. “dˆ³‚Í•ÏˆÊA“d—¬‚Í¿—ÊAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í—Í‚É‘Î‰‚·‚é",
+            "D. “dˆ³‚Í“d‰×A“d—¬‚Í•ÏˆÊAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í‘¬“x‚É‘Î‰‚·‚é"
+        ],
+        answer: "A. “dˆ³‚Í—Í‚âƒgƒ‹ƒNA“d—¬‚Í‘¬“x‚âŠp‘¬“xAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í¿—Ê‚âŠµ«ƒ‚[ƒƒ“ƒg‚É‘Î‰‚·‚é",
+        explanation: "“dˆ³‚Í’¼ü‰^“®‚Å‚Í—ÍA‰ñ“]‰^“®‚Å‚Íƒgƒ‹ƒN‚É‘Î‰‚µ‚Ü‚·B“d—¬‚Í‘¬“x‚âŠp‘¬“xAƒCƒ“ƒ_ƒNƒ^ƒ“ƒX‚Í¿—Ê‚âŠµ«ƒ‚[ƒƒ“ƒg‚É‘Î‰‚µ‚Ü‚·B"
+    }
+];
+
+
+const practiceQuestionData = {
+    "—ğj": practiceQuestions,
+    "‰pŒêi•¶–@j": englishQuestions,
+    "”ŠwA": mathAQuestions,
+    "”ŠwIII": mathIIIQuestions,
+    "Œv‘ª§Œä": electronicMeasurementControlQuestions
+    
+};
+
 let currentPracticeQuestions = [];
 let currentPracticeQuestion = 0;
 let practiceQuestionOrder = [];
 let practiceCorrectCount = 0;
+
+function showPracticePage() {
+    currentScreen = "practice";
+
+    const mainTitle = document.querySelector(".main-title");
+    const navMenu = document.querySelector(".nav-menu");
+    const hero = document.getElementById("hero");
+    const guideButton = document.querySelector(".guide-toggle-btn");
+    const guideBox = document.getElementById("guide-box");
+    const resultLayout = document.getElementById("result-layout");
+    const mypage = document.getElementById("mypage");
+
+    if (mainTitle) mainTitle.style.display = "none";
+    if (navMenu) navMenu.style.display = "none";
+    if (hero) hero.style.display = "none";
+    if (guideButton) guideButton.style.display = "none";
+    if (guideBox) guideBox.style.display = "none";
+
+    // İ’èƒGƒŠƒA‚ÆŠJ•Âƒ{ƒ^ƒ“‚ğŠ®‘S‚É”ñ•\¦
+    updateSettingVisibility();
+
+    if (resultLayout) resultLayout.style.setProperty("display", "none", "important");
+    if (mypage) mypage.style.display = "none";
+
+    const practicePage = document.getElementById("practice-page");
+    if (practicePage) practicePage.style.display = "block";
+
+    const setting = document.getElementById("practice-setting");
+    if (setting) setting.style.display = "block";
+
+    const questionArea = document.getElementById("practice-question-area");
+    if (questionArea) questionArea.style.display = "none";
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
 
 let practiceWrongQuestions = [];
 
@@ -95,10 +2694,9 @@ function startPractice() {
 function showPracticeQuestion() {
     const questionIndex = practiceQuestionOrder[currentPracticeQuestion];
     const question = currentPracticeQuestions[questionIndex];
-    if (!question.type && Array.isArray(question.choices)) question.type = "é¸æŠå¼";
 
     document.getElementById("practice-question-number").textContent =
-        `ç¬¬${currentPracticeQuestion + 1}å• / ${practiceQuestionOrder.length}å•`;
+        `‘æ${currentPracticeQuestion + 1}–â / ${practiceQuestionOrder.length}–â`;
 
     document.getElementById("practice-question").innerHTML = question.question;
 
@@ -111,7 +2709,7 @@ function showPracticeQuestion() {
 
     document.getElementById("practice-next-btn").style.display = "none";
 
-    if (question.type === "é¸æŠå¼") {
+    if (question.type === "‘I‘ğ®") {
         const shuffledChoices = shuffleArray([...question.choices]);
 
         shuffledChoices.forEach(choice => {
@@ -129,22 +2727,22 @@ function showPracticeQuestion() {
 
             choicesContainer.appendChild(button);
         });
-    } else if (question.type === "è¨˜è¿°å¼") {
+    } else if (question.type === "‹Lq®") {
         const input = document.createElement("input");
         input.type = "text";
         input.id = "practice-answer-input";
         input.className = "practice-answer-input";
-        input.placeholder = "ç­”ãˆã‚’å…¥åŠ›ã—ã¦ãã ã•ã„";
+        input.placeholder = "“š‚¦‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢";
 
         const answerButton = document.createElement("button");
-        answerButton.textContent = "å›ç­”ã™ã‚‹";
+        answerButton.textContent = "‰ñ“š‚·‚é";
         answerButton.className = "practice-submit-btn";
 
         answerButton.onclick = function() {
             const userAnswer = input.value.trim();
 
             if (userAnswer === "") {
-                alert("ç­”ãˆã‚’å…¥åŠ›ã—ã¦ãã ã•ã„ã€‚");
+                alert("“š‚¦‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B");
                 return;
             }
 
@@ -187,13 +2785,13 @@ function answerPracticeQuestion(
     const userAnswer = selectedAnswer.trim().toLowerCase();
     const correctAnswer = question.answer.trim().toLowerCase();
 
-    if (question.type === "é¸æŠå¼") {
+    if (question.type === "‘I‘ğ®") {
         const buttons = document.querySelectorAll(".practice-choice");
         buttons.forEach(button => {
             button.disabled = true;
             button.classList.add("disabled");
         });
-    } else if (question.type === "è¨˜è¿°å¼") {
+    } else if (question.type === "‹Lq®") {
         const input = document.getElementById("practice-answer-input");
         const submitButton = document.querySelector(".practice-submit-btn");
 
@@ -204,13 +2802,13 @@ function answerPracticeQuestion(
     if (userAnswer === correctAnswer) {
         practiceCorrectCount++;
 
-        if (question.type === "é¸æŠå¼") {
+        if (question.type === "‘I‘ğ®") {
             selectedElement.classList.add("correct");
         }
 
-        let resultHTML = "æ­£è§£ï¼";
+        let resultHTML = "³‰ğI";
         if (question.explanation) {
-            resultHTML += `<br><br><strong>è§£èª¬ï¼š</strong><br>${question.explanation}`;
+            resultHTML += `<br><br><strong>‰ğàF</strong><br>${question.explanation}`;
         }
 
         result.innerHTML = resultHTML;
@@ -224,7 +2822,7 @@ function answerPracticeQuestion(
             }
         }
 
-        if (question.type === "é¸æŠå¼") {
+        if (question.type === "‘I‘ğ®") {
             selectedElement.classList.add("incorrect");
 
             const buttons = document.querySelectorAll(".practice-choice");
@@ -235,10 +2833,10 @@ function answerPracticeQuestion(
             });
         }
 
-        result.innerHTML = `ä¸æ­£è§£ï¼<br>æ­£è§£ã¯ã€Œ${question.answer}ã€ã§ã™ã€‚`;
+        result.innerHTML = `•s³‰ğI<br>³‰ğ‚Íu${question.answer}v‚Å‚·B`;
 
         if (question.explanation) {
-            result.innerHTML += `<br><br><strong>è§£èª¬ï¼š</strong><br>${question.explanation}`;
+            result.innerHTML += `<br><br><strong>‰ğàF</strong><br>${question.explanation}`;
         }
 
         result.className = "practice-result incorrect-result answered";
@@ -248,9 +2846,9 @@ function answerPracticeQuestion(
     nextButton.style.display = "block";
 
     if (currentPracticeQuestion === practiceQuestionOrder.length - 1) {
-        nextButton.textContent = "çµæœã‚’è¦‹ã‚‹";
+        nextButton.textContent = "Œ‹‰Ê‚ğŒ©‚é";
     } else {
-        nextButton.textContent = "æ¬¡ã®å•é¡Œ â†’";
+        nextButton.textContent = "Ÿ‚Ì–â‘è ¨";
     }
 
     if (window.MathJax) {
@@ -279,19 +2877,19 @@ function showPracticeResult() {
         (practiceCorrectCount / practiceQuestionOrder.length) * 100
     );
 
-    document.getElementById("practice-question-number").textContent = "ç·´ç¿’å•é¡Œçµ‚äº†ï¼";
+    document.getElementById("practice-question-number").textContent = "—ûK–â‘èI—¹I";
 
     document.getElementById("practice-question").innerHTML =
-        `ãŠç–²ã‚Œã•ã¾ã§ã—ãŸï¼<br>ã‚ãªãŸã®æ­£è§£æ•°ã¯ <strong>${practiceCorrectCount} / ${practiceQuestionOrder.length}å•</strong> ã§ã™ã€‚<br>æ­£ç­”ç‡ï¼š<strong>${percentage}%</strong>`;
+        `‚¨”æ‚ê‚³‚Ü‚Å‚µ‚½I<br>‚ ‚È‚½‚Ì³‰ğ”‚Í <strong>${practiceCorrectCount} / ${practiceQuestionOrder.length}–â</strong> ‚Å‚·B<br>³“š—¦F<strong>${percentage}%</strong>`;
 
     document.getElementById("practice-choices").innerHTML = "";
 
-    document.getElementById("practice-result").textContent = "ã‚‚ã†ä¸€åº¦æŒ‘æˆ¦ã—ã¦ã¿ã‚ˆã†ï¼";
+    document.getElementById("practice-result").textContent = "‚à‚¤ˆê“x’§í‚µ‚Ä‚İ‚æ‚¤I";
     document.getElementById("practice-result").className = "practice-result correct-result";
 
     const nextButton = document.getElementById("practice-next-btn");
     nextButton.style.display = "block";
-    nextButton.textContent = "ã‚‚ã†ä¸€åº¦æŒ‘æˆ¦ã™ã‚‹";
+    nextButton.textContent = "‚à‚¤ˆê“x’§í‚·‚é";
 
     nextButton.onclick = function() {
         startPractice();
@@ -329,14 +2927,225 @@ function retryWrongQuestions() {
     });
 }
 
-function backToStudyPlan() {
+
+/* =====================================
+   è“®ŠwK‹L˜^
+===================================== */
+
+// ƒƒOƒCƒ“ƒ†[ƒU[‚²‚Æ‚É•Û‘¶êŠ‚ğ•ª‚¯‚é
+function getManualRecordKey() {
+    const userId = localStorage.getItem("loginUserId");
+    return "manualStudyRecords_" + (userId || "guest");
+}
+
+// ‹L˜^‚ğ“Ç‚İ‚Ş
+function getManualStudyRecords() {
+    try {
+        return JSON.parse(
+            localStorage.getItem(getManualRecordKey()) || "[]"
+        );
+    } catch (error) {
+        console.error("ŠwK‹L˜^‚Ì“Ç‚İ‚İƒGƒ‰[", error);
+        return [];
+    }
+}
+
+// ‹³‰È‚Ì‘I‘ğˆ‚ğXV
+function updateRecordSubjects() {
+    const select = document.getElementById("record-subject");
+    if (!select) return;
+
+    const current = select.value;
+
+    const subjects = [
+        ...new Set(
+            [
+                ...baseSubjectsGlobal,
+                ...document.getElementById("subject-input")
+                    .value.split(/[,A]/)
+            ]
+            .map(s => s.trim())
+            .filter(Boolean)
+        )
+    ];
+
+    select.replaceChildren(
+        new Option("‹³‰È‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢", "")
+    );
+
+    subjects.forEach(subject => {
+        select.add(new Option(subject, subject));
+    });
+
+    if (subjects.includes(current)) {
+        select.value = current;
+    }
+}
+
+// V‚µ‚¢ŠwK‹L˜^‚ğ•Û‘¶
+function saveManualStudyRecord() {
+    const date = document.getElementById("record-date").value;
+    const subject = document.getElementById("record-subject").value;
+    const hours = Number(
+        document.getElementById("record-hours").value
+    );
+    const minutes = Number(
+        document.getElementById("record-minutes").value
+    );
+    const memo = document.getElementById("record-memo").value.trim();
+
+    if (!date || !subject) {
+        alert("“ú•t‚Æ‹³‰È‚ğ“ü—Í‚µ‚Ä‚ËI");
+        return;
+    }
+
+    if (
+        !Number.isInteger(hours) ||
+        !Number.isInteger(minutes) ||
+        hours < 0 || hours > 24 ||
+        minutes < 0 || minutes > 59 ||
+        (hours === 24 && minutes > 0)
+    ) {
+        alert("•×‹­ŠÔ‚ğ³‚µ‚­“ü—Í‚µ‚Ä‚ËI");
+        return;
+    }
+
+    const totalMinutes = hours * 60 + minutes;
+
+    if (totalMinutes === 0) {
+        alert("•×‹­ŠÔ‚ğ“ü—Í‚µ‚Ä‚ËI");
+        return;
+    }
+
+    const records = getManualStudyRecords();
+
+    records.push({
+        id: crypto.randomUUID(),
+        date: date,
+        subject: subject,
+        minutes: totalMinutes,
+        memo: memo
+    });
+
+    try {
+        localStorage.setItem(
+            getManualRecordKey(),
+            JSON.stringify(records)
+        );
+    } catch (error) {
+        alert("•Û‘¶‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B");
+        return;
+    }
+
+    document.getElementById("record-memo").value = "";
+    renderManualStudyRecords();
+
+    alert("•×‹­‹L˜^‚ğ•Û‘¶‚µ‚½‚æI");
+}
+
+// ‹L˜^‚ğ•\¦
+function renderManualStudyRecords() {
+    const container = document.getElementById("manual-study-list");
+    const totalElement = document.getElementById("manual-study-total");
+
+    if (!container || !totalElement) return;
+
+    const records = getManualStudyRecords();
+    records.sort((a, b) => b.date.localeCompare(a.date));
+
+    container.replaceChildren();
+
+    const totalMinutes = records.reduce(
+        (sum, record) => sum + record.minutes, 0
+    );
+
+    totalElement.textContent =
+        `è“ü—Í‚Ì—İŒvF${Math.floor(totalMinutes / 60)}ŠÔ` +
+        `${totalMinutes % 60}•ª`;
+
+    if (records.length === 0) {
+        container.textContent = "‚Ü‚¾‹L˜^‚ª‚ ‚è‚Ü‚¹‚ñB";
+        return;
+    }
+
+    records.forEach(record => {
+        const card = document.createElement("div");
+        card.className = "manual-record-card";
+
+        const title = document.createElement("strong");
+        title.textContent = `${record.date}b${record.subject}`;
+
+        const time = document.createElement("p");
+        time.textContent =
+            `•×‹­ŠÔF${Math.floor(record.minutes / 60)}ŠÔ` +
+            `${record.minutes % 60}•ª`;
+
+        const memo = document.createElement("p");
+        memo.textContent = record.memo || "ƒƒ‚‚È‚µ";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "íœ";
+
+        button.addEventListener("click", () => {
+            deleteManualStudyRecord(record.id);
+        });
+
+        card.append(title, time, memo, button);
+        container.appendChild(card);
+    });
+}
+
+// ‹L˜^‚ğíœ
+function deleteManualStudyRecord(id) {
+    if (!confirm("‚±‚Ì•×‹­‹L˜^‚ğíœ‚·‚éH")) return;
+
+    const records = getManualStudyRecords()
+        .filter(record => record.id !== id);
+
+    localStorage.setItem(
+        getManualRecordKey(),
+        JSON.stringify(records)
+    );
+
+    renderManualStudyRecords();
+}
+
+// ƒ}ƒCƒy[ƒW‚ğŠJ‚¢‚½‚Æ‚«‚Ì€”õ
+function initializeManualStudyRecords() {
+    const dateInput = document.getElementById("record-date");
+
+    if (dateInput && !dateInput.value) {
+        dateInput.value = getLocalDateString(new Date());
+    }
+
+    updateRecordSubjects();
+    renderManualStudyRecords();
+}
+
+function goToGameMode() {
     const confirmed = confirm(
-        "å­¦ç¿’è¨ˆç”»ã®ã‚µã‚¤ãƒˆã«æˆ»ã‚Šã¾ã™ã‹ï¼Ÿ"
+        "ƒQ[ƒ€ƒ‚[ƒh‚ÉˆÚ“®‚µ‚Ü‚·‚©H"
     );
 
     if (!confirmed) return;
 
-    window.location.href = "../ã‚µã‚¤ãƒˆ/index.html";
-}
+    const overlay = document.getElementById("game-transition");
 
-function returnToStudySite() { window.location.href = "../index.html"; }
+    if (overlay) {
+        overlay.classList.add("active");
+    }
+
+    setTimeout(() => {
+        window.location.href = "../game/game.(2).html";
+    }, 850);
+}
+// PWA: Service Worker‚Ì“o˜^
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then((reg) => console.log('Service Worker “o˜^¬Œ÷:', reg.scope))
+      .catch((err) => console.error('Service Worker “o˜^¸”s:', err));
+  });
+}
