@@ -3141,7 +3141,7 @@ function goToGameMode() {
     }
 
     setTimeout(() => {
-        window.location.href = "../game/game.(2).html";
+        window.location.href = "./game.(2).html";
     }, 850);
 }
 // PWA: Service Workerの登録
