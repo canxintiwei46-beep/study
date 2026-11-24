@@ -1108,6 +1108,7 @@ const electronicMeasurementControlQuestions = [
         answer: "A. 電圧は力やトルク、電流は速度や角速度、インダクタンスは質量や慣性モーメントに対応する",
         explanation: "電圧は直線運動では力、回転運動ではトルクに対応します。電流は速度や角速度、インダクタンスは質量や慣性モーメントに対応します。"
     }
+    
 ];
 
 
@@ -1437,6 +1438,73 @@ const kanji3Questions = [
         answer: "すはだ",
         explanation: "素肌は「すはだ」と読みます。"
     },
+    {
+    type: "選択式",
+    level: "★☆☆",
+    question: "(1) 「訴訟」の読みとして正しいものはどれですか。",
+    choices: ["そしょう", "そじょう", "しょしょう", "そそう"],
+    answer: "そしょう",
+    explanation: "訴訟は「そしょう」と読みます。裁判によって争いを解決しようとすることです。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(2) 「風鈴」の読みとして正しいものはどれですか。",
+    choices: ["ふうりん", "ふうれい", "かざりん", "ふりん"],
+    answer: "ふうりん",
+    explanation: "風鈴は「ふうりん」と読みます。風によって音が鳴る小さな鈴です。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(3) 「頑丈」の読みとして正しいものはどれですか。",
+    choices: ["がんじょう", "がんしょう", "かんじょう", "がんぞう"],
+    answer: "がんじょう",
+    explanation: "頑丈は「がんじょう」と読み、丈夫で壊れにくいことを意味します。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(4) 「醜聞」の読みとして正しいものはどれですか。",
+    choices: ["しゅうぶん", "しゅうもん", "しゅぶん", "しゅうふん"],
+    answer: "しゅうぶん",
+    explanation: "醜聞は「しゅうぶん」と読み、世間に知られた好ましくないうわさや事件を意味します。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(5) 「享楽」の読みとして正しいものはどれですか。",
+    choices: ["きょうらく", "こうらく", "きょうがく", "けいらく"],
+    answer: "きょうらく",
+    explanation: "享楽は「きょうらく」と読み、楽しみを味わうことを意味します。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(6) 「辛相」の読みとして正しいものはどれですか。",
+    choices: ["さいしょう", "しんそう", "からそう", "しんじょう"],
+    answer: "さいしょう",
+    explanation: "宰相は「さいしょう」と読みます。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(7) 「献立」の読みとして正しいものはどれですか。",
+    choices: ["こんだて", "けんだて", "こんりつ", "けんりつ"],
+    answer: "こんだて",
+    explanation: "献立は「こんだて」と読み、食事の内容や料理の組み合わせを意味します。"
+},
+{
+    type: "選択式",
+    level: "★☆☆",
+    question: "(8) 「憤り」の読みとして正しいものはどれですか。",
+    choices: ["ふんり", "いきり", "いきどうり", "いきどおり"],
+    answer: "いきどおり",
+    explanation: "憤りは「いきどおり」と読みます。"
+},
+
+
+   
 
     // ==========================================
     // 2. 漢字の書き（8問）
@@ -1631,7 +1699,7 @@ const englishWordTest3 = [
     { type:"記述式", question:"(10) 交通事故　a (　　　) accident", answer:"traffic", explanation:"traffic は交通です。" },
     { type:"記述式", question:"(11) 場合によっては　in some (　　　)", answer:"cases", explanation:"case は場合です。" },
     { type:"記述式", question:"(12) 害をもたらす　cause (　　　)", answer:"harm", explanation:"harm は害です。" },
-    { type:"記述式", question:"(13) 日課・毎日の巡回　the daily (　　　)", answer:"round", explanation:"round は巡回などの意味があります。" },
+    { type:"記述式", question:"(13) 日課　the daily (　　　)", answer:"round", explanation:"round は巡回などの意味があります。" },
     { type:"記述式", question:"(14) 健康を促進する　(　　　) health", answer:"promote", explanation:"promote は促進するです。" },
     { type:"記述式", question:"(15) それゆえに、私は行った。　(　　　), I went.", answer:"therefore", explanation:"therefore はそれゆえにです。" },
     { type:"記述式", question:"(16) 国内問題　domestic (　　　)", answer:"affairs", explanation:"affairs は事柄・情勢などです。" },
@@ -1641,134 +1709,719 @@ const englishWordTest3 = [
     { type:"記述式", question:"(20) 多様な文化　(　　　) cultures", answer:"diverse", explanation:"diverse は多様なです。" },
     {
         type:"選択式",
-        question:"(1) 心臓発作を起こす　(　　　) a heart attack",
-        choices:["have","suffer","receive","recover"],
-        answer:"have",
-        explanation:"have a heart attack は心臓発作を起こすという表現です。"
+        question:"(21) 心臓発作を起こす　(　　　) a heart attack",
+        choices:["poop","suffer","receive","recover"],
+        answer:"suffer",
+        explanation:"suffer a heart attack は心臓発作を起こすという表現です。"
     },
     {
         type:"選択式",
-        question:"(2) 上昇している物価　(　　　) prices",
+        question:"(22) 上昇している物価　(　　　) prices",
         choices:["rising","dropping","using","losing"],
         answer:"rising",
         explanation:"rising prices は上昇している物価です。"
     },
     {
         type:"選択式",
-        question:"(3) 楽譜を読むことができる be (　　　) of reading music",
+        question:"(23) 楽譜を読むことができる be (　　　) of reading music",
         choices:["capable","creative","comfortable","correct"],
         answer:"capable",
         explanation:"be capable of は～する能力があるです。"
     },
     {
         type:"選択式",
-        question:"(4) もちろんだめです　(　　　) not",
+        question:"(24) もちろんだめです　(　　　) not",
         choices:["not","almost","eventually","certainly"],
         answer:"certainly",
         explanation:"certainly は確かに・当然です。"
     },
     {
         type:"選択式",
-        question:"(5) 人間の行動　human (　　　)",
+        question:"(25) 人間の行動　human (　　　)",
         choices:["progress","behavior","favor","taste"],
         answer:"behavior",
         explanation:"behavior は行動です。"
     },
     {
         type:"選択式",
-        question:"(6) Aの必要性に言及する　refer (　　　) the need for A",
-        choices:["to","with","at","from"],
-        answer:"to",
+        question:"(26) Aの必要性に言及する　 (　　　) to the need for A",
+        choices:["refer","with","at","from"],
+        answer:"refer",
         explanation:"refer to は～に言及するです。"
     },
     {
         type:"選択式",
-        question:"(7) 傑出した能力　outstanding (　　　) ",
+        question:"(27) 傑出した能力　outstanding (　　　) ",
         choices:["ability","personal","quality","ordinary"],
         answer:"ability",
         explanation:"ability は能力です。"
     },
     {
         type:"選択式",
-        question:"(8) 反対方向　the (　　　) direction",
+        question:"(28) 反対方向　the (　　　) direction",
         choices:["original","official","opposite","ordinary"],
         answer:"opposite",
         explanation:"opposite は反対のです。"
     },
     {
         type:"選択式",
-        question:"(9) 非常に勇気づけられる　be greatly (　　　)",
+        question:"(29) 非常に勇気づけられる　be greatly (　　　)",
         choices:["learned","encouraged","ended","enjoyed"],
         answer:"encouraged",
         explanation:"encouraged は勇気づけられたです。"
     },
     {
         type:"選択式",
-        question:"(10) くつろいだ雰囲気　a relaxed (　　　)",
+        question:"(30) くつろいだ雰囲気　a relaxed (　　　)",
         choices:["structure","culture","temperature","atmosphere"],
         answer:"atmosphere",
         explanation:"atmosphere は雰囲気です。"
     },
     {
         type:"記述式",
-        question:"(11) ライフサイクル　a life (　　　)",
+        question:"(31) ライフサイクル　a life (　　　)",
         answer:"cycle",
         explanation:"cycle は周期・循環です。"
     },
     {
         type:"記述式",
-        question:"(12) 結果を比べる　(　　　)the  results",
+        question:"(32) 結果を比べる　(　　　)the  results",
         answer:"compare",
         explanation:"compare は比較するです。"
     },
     {
         type:"記述式",
-        question:"(13) 自然に帰る go back to (　　　)",
+        question:"(33) 自然に帰る go back to (　　　)",
         answer:"nature",
         explanation:"nature は自然です。"
     },
     {
         type:"記述式",
-        question:"(14) 高度を上げる gain (　　　)",
+        question:"(34) 高度を上げる gain (　　　)",
         answer:"height",
         explanation:"height は高さです。"
     },
     {
         type:"記述式",
-        question:"(15) 機嫌が悪い be in a bad (　　　)",
+        question:"(35) 機嫌が悪い be in a bad (　　　)",
         answer:"mood",
         explanation:"mood は気分です。"
     },
     {
         type:"記述式",
-        question:"(16) 場合によります It (　　　) ",
+        question:"(36) 場合によります It (　　　) ",
         answer:"depends",
         explanation:"depend on は～に依存するです。"
     },
     {
         type:"記述式",
-        question:"(17) 大声で　in a (　　　) voice",
+        question:"(37) 大声で　in a (　　　) voice",
         answer:"loud",
         explanation:"loud は大きな音の・大声のです。"
     },
     {
         type:"記述式",
-        question:"(18) 非常に価値がある　be (　　　) a fortune",
+        question:"(38) 非常に価値がある　be (　　　) a fortune",
         answer:"worth",
         explanation:"worth は～の価値があるです。"
     },
     {
         type:"記述式",
-        question:"(19) 確かに for (　　　)",
+        question:"(39) 確かに for (　　　)",
         answer:"certain",
         explanation:"certain はある・特定のです。"
     },
     {
         type:"記述式",
-        question:"(20) 典型的なフランス料理レストラン a (　　　) French restaurant",
+        question:"(40) 典型的なフランス料理レストラン a (　　　) French restaurant",
         answer:"typical",
         explanation:"typical は典型的なです。"
+    },
+    {
+        type:"選択式",
+        question:"(41) Aに気づかされる　be made (　　　) of A",
+        choices:["aware","eager","hungry","available"],
+        answer:"aware",
+        explanation:"be made aware of は～に気づかされるです。"
+    },
+    {
+        type:"選択式",
+        question:"(42) この機会をありがたく思う　(　　　) this opportunity",
+        choices:["appreciate","allowance","apparent","export"],
+        answer:"appreciate",
+        explanation:"appreciate は利益・恩恵です。"
+    },
+    {
+        type:"選択式",
+        question:"(43) 時事英語　(　　　) English",
+        choices:["current","ancient","opposite","political"],
+        answer:"current",
+        explanation:"current は現在のです。"
+    },
+    {
+        type:"選択式",
+        question:"(44) 関係のある問題　a (　　　) issue",
+        choices:["issue","related","severe","primary"],
+        answer:"related",
+        explanation:"related は 関連している です。"
+    },
+    {
+        type:"選択式",
+        question:"(45) 産業廃棄物 industrial (　　　) ",
+        choices:["waste","factory","drug","grass"],
+        answer:"waste",
+        explanation:"waste は 廃棄物 です。"
+    },
+    {
+        type:"選択式",
+        question:"(46) 遺伝子　human (　　　)",
+        choices:["religions","genes","signals","species"],
+        answer:"genes",
+        explanation:"genes は 遺伝子です。"
+    },
+    {
+        type:"選択式",
+        question:"(47) 資源を開発する　develop (　　　)",
+        choices:["conflicts","resources","markets","environments"],
+        answer:"resources",
+        explanation:"resources は 資源 です。"
+    },
+    {
+        type:"選択式",
+        question:"(48) 主にAから成り立つ　(　　　) mainly of A",
+        choices:["contribute","consider","construct","consist"],
+        answer:"consist",
+        explanation:"consist は ～から成る です。"
+    },
+    {
+        type:"選択式",
+        question:"(49) 私のせいにするな　Don't (　　　) me.",
+        choices:["think","invite","attend","blame"],
+        answer:"blame",
+        explanation:"blame は ～のせいにする です。"
+    },
+    {
+        type:"選択式",
+        question:"(50) それはどうかな　I (　　　).",
+        choices:["think","decide","wonder","fear"],
+        answer:"wonder",
+        explanation:"wonder は疑問に思うです。"
+    },
+    {
+        type:"記述式",
+        question:"(51) 黒のスーツを着ている　(　　　) a black suit",
+        answer:"wear",
+        explanation:"wear は身につけているです。"
+    },
+    {
+        type:"記述式",
+        question:"(52) 疑いなく without (　　　)",
+        answer:"doubt",
+        explanation:"doubt は疑いです。"
+    },
+    {
+        type:"記述式",
+        question:"(53) 記憶喪失　(　　　) of memory",
+        answer:"loss",
+        explanation:"loss は喪失です。"
+    },
+    {
+        type:"記述式",
+        question:"(54) 速球を投げる　(　　　) a fastball",
+        answer:"throw",
+        explanation:"throw は投げるです。"
+    },
+    {
+        type:"記述式",
+        question:"(55) 近づかないよう彼にアドバイスする　(　　　) him to stya away",
+        answer:"advise",
+        explanation:"advise は助言するです。"
+    },
+    {
+        type:"記述式",
+        question:"(56) 映画館 a movie (　　　)",
+        answer:"theater",
+        explanation:"theater は劇場です。"
+    },
+    {
+        type:"記述式",
+        question:"(57) ドアに鍵を掛ける　(　　　) the door",
+        answer:"lock",
+        explanation:"lock は鍵をかけるです。"
+    },
+    {
+        type:"記述式",
+        question:"(58) ベッドに横になる　(　　　) in bed",
+        answer:"lie",
+        explanation:"lie は横になるです。"
+    },
+    {
+        type:"記述式",
+        question:"(59) カルチャーショック culture (　　　)",
+        answer:"shock",
+        explanation:"shock は衝撃です。"
+    },
+    {
+        type:"記述式",
+        question:"(60) いれたてのコーヒー　(　　　) coffee",
+        answer:"fresh",
+        explanation:"fresh は新鮮なです。"
     }
+];
+
+const physicsQuestions = [
+
+	{
+	type:"選択式",
+	level:"★☆☆",
+	question:"ケプラーの第1法則で、惑星が描く軌道はどれですか。",
+	choices:["円軌道","楕円軌道","放物線軌道","直線軌道"],
+	answer:"楕円軌道",
+	explanation:"惑星は太陽を1つの焦点とする楕円軌道を描きます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"ケプラーの第2法則を何といいますか。",
+	answer:"面積速度一定の法則",
+	explanation:"惑星と太陽を結ぶ線分が一定時間に描く面積は一定です。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"ケプラーの第3法則で、惑星の公転周期Tと楕円軌道の半長軸aについて正しい関係式はどれですか。",
+	choices:["T/a＝一定","T²/a³＝一定","T³/a²＝一定","Ta＝一定"],
+	answer:"T²/a³＝一定",
+	explanation:"公転周期の2乗と楕円軌道の半長軸の3乗の比は一定です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"2つの物体の質量をm₁、m₂、距離をr、万有引力定数をGとするとき、万有引力の大きさFを表す式を書きなさい。",
+	answer:"F＝Gm₁m₂/r²",
+	explanation:"万有引力は2物体の質量の積に比例し、距離の2乗に反比例します。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"万有引力の法則における比例定数Gの名称はどれですか。",
+	choices:["気体定数","万有引力定数","ボルツマン定数","アボガドロ定数"],
+	answer:"万有引力定数",
+	explanation:"Gは万有引力定数です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"地球の質量をM、半径をR、万有引力定数をGとするとき、地表での重力加速度gを表す式を書きなさい。",
+	answer:"g＝GM/R²",
+	explanation:"地表での重力加速度は、地球の質量と半径を用いて表されます。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"地球の万有引力による位置エネルギーUの式として正しいものはどれですか。物体の質量をm、地球の質量をM、距離をrとします。",
+	choices:["U＝GMm/r","U＝−GMm/r","U＝GMm/r²","U＝−GMm/r²"],
+	answer:"U＝−GMm/r",
+	explanation:"無限遠で位置エネルギーを0とすると、U＝−GMm/rです。"
+	},
+	{
+	type:"選択式",
+	level:"★☆☆",
+	question:"地球の自転による遠心力は、万有引力に比べてどのような大きさですか。",
+	choices:["無視できるほど小さい","万有引力と等しい","万有引力より大きい","常に0である"],
+	answer:"無視できるほど小さい",
+	explanation:"教材では、地球の自転による遠心力は万有引力に比べて無視できるほど小さいとされています。"
+	},
+
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"単位面積あたりに垂直にはたらく力の大きさを何といいますか。",
+	answer:"圧力",
+	explanation:"圧力は単位面積あたりにはたらく垂直な力です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"面積Sの面に垂直に大きさFの力がはたらくとき、圧力pを表す式を書きなさい。",
+	answer:"p＝F/S",
+	explanation:"圧力は力を面積で割ったものです。"
+	},
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"温度が一定のとき、一定質量の気体の体積Vは圧力pに反比例する。この法則を何といいますか。",
+	answer:"ボイルの法則",
+	explanation:"温度一定のとき、圧力と体積の積は一定です。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"ボイルの法則を表す式はどれですか。",
+	choices:["pV＝一定","V/T＝一定","p/T＝一定","pV/T＝一定"],
+	answer:"pV＝一定",
+	explanation:"温度一定では、pVが一定になります。"
+	},
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"圧力が一定のとき、一定質量の気体の体積Vは絶対温度Tに比例する。この法則を何といいますか。",
+	answer:"シャルルの法則",
+	explanation:"圧力一定のとき、体積と絶対温度の比は一定です。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"シャルルの法則を表す式はどれですか。",
+	choices:["pV＝一定","V/T＝一定","p/T＝一定","pV/T＝一定"],
+	answer:"V/T＝一定",
+	explanation:"圧力一定では、V/Tが一定になります。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"一定質量の気体について、体積Vは絶対温度Tに比例し、圧力pに反比例します。この関係を表す式はどれですか。",
+	choices:["pV/T＝一定","pT/V＝一定","VT/p＝一定","pV＋T＝一定"],
+	answer:"pV/T＝一定",
+	explanation:"一定質量の気体では、pV/Tが一定になります。"
+	},
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"原子や分子などの集団を単位として扱うとき、その集団を何といいますか。",
+	answer:"1モル",
+	explanation:"6.02×10²³個の粒子の集団を1モルといいます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"1 molあたりの粒子の数を表す定数を何といいますか。",
+	answer:"アボガドロ定数",
+	explanation:"アボガドロ定数は6.02×10²³/molです。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"1 molあたりの質量を何といいますか。",
+	answer:"モル質量",
+	explanation:"モル質量は物質1 molあたりの質量です。"
+	},
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"気体定数Rの値として、教材に示されている値を書きなさい。",
+	answer:"8.31 J/(mol・K)",
+	explanation:"気体定数Rは8.31 J/(mol・K)です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"圧力p、体積V、物質量n、絶対温度T、気体定数Rの関係を表す理想気体の状態方程式を書きなさい。",
+	answer:"pV＝nRT",
+	explanation:"理想気体の状態方程式はpV＝nRTです。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"実在の気体を理想気体として扱いやすい条件はどれですか。",
+	choices:["極端な低温・高圧","常温・常圧付近","極端な高温・高圧","常に理想気体として扱える"],
+	answer:"常温・常圧付近",
+	explanation:"常温・常圧付近では、実在の気体を理想気体とみなせます。"
+	},
+
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体分子が壁Aに弾性衝突したとき、変化しない速度成分はどの方向の成分ですか。",
+	answer:"y軸方向とz軸方向",
+	explanation:"壁との衝突では、壁に垂直なx軸方向の速度成分だけが変化し、y軸方向とz軸方向の速度成分は変化しません。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"気体分子が壁Aに弾性衝突したとき、x軸方向の速度成分はどうなりますか。",
+	choices:["大きさが2倍になる","向きが反対になる","変化しない","0になる"],
+	answer:"向きが反対になる",
+	explanation:"弾性衝突では、壁に垂直な方向の速度成分の向きが反対になります。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体分子の運動によって容器の壁が受ける圧力は、分子の速度の2乗の平均を用いてどのように表されますか。分子数をN、分子1個の質量をm、容器の体積をVとします。",
+	answer:"p＝Nm v²/(3V)（v²は速度の2乗の平均）",
+	explanation:"気体の圧力は、分子の数、質量、速度の2乗の平均、容器の体積によって表されます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体分子の平均運動エネルギーと絶対温度Tの関係を表す式を書きなさい。ボルツマン定数をkとします。",
+	answer:"1/2 mv²＝3/2 kT",
+	explanation:"気体分子の平均運動エネルギーは絶対温度に比例します。"
+	},
+	{
+	type:"記述式",
+	level:"★☆☆",
+	question:"気体分子の平均運動エネルギーと絶対温度の関係に登場する比例定数kを何といいますか。",
+	answer:"ボルツマン定数",
+	explanation:"kはボルツマン定数で、教材では1.38×10⁻²³ J/Kとされています。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体分子の速度の2乗の平均の平方根を何といいますか。",
+	answer:"二乗平均速度",
+	explanation:"√(v²)を二乗平均速度といいます。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"二乗平均速度について正しい説明はどれですか。",
+	choices:["気体分子の平均の速さを表す目安である","気体分子の質量を表す","気体の圧力そのものを表す","気体の体積を表す"],
+	answer:"気体分子の平均の速さを表す目安である",
+	explanation:"教材では二乗平均速度は気体分子の平均の速さを表す目安とされています。"
+	},
+
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単原子分子からなる理想気体の内部エネルギーUを、物質量n、気体定数R、絶対温度Tを用いて表しなさい。",
+	answer:"U＝3/2 nRT",
+	explanation:"単原子分子からなる理想気体の内部エネルギーはU＝3/2 nRTです。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"理想気体の内部エネルギーについて正しい説明はどれですか。",
+	choices:["分子の熱運動によるエネルギーだけである","分子間にはたらく力によるエネルギーだけである","熱運動と分子間の力によるエネルギーの和である","気体の体積だけで決まる"],
+	answer:"分子の熱運動によるエネルギーだけである",
+	explanation:"理想気体では分子間にはたらく力がないものとして扱うため、内部エネルギーは分子の熱運動によるエネルギーだけになります。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体に外部から加えられた熱量をQ、外部から気体がされた仕事をWとするとき、熱力学の第1法則を表す式を書きなさい。",
+	answer:"ΔU＝Q＋W",
+	explanation:"気体が外部から熱を受け取り、外部から仕事をされると、内部エネルギーが増加します。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"気体が外部にする仕事をW'とするとき、熱力学の第1法則を表す式を書きなさい。",
+	answer:"ΔU＝Q−W'",
+	explanation:"気体が外部に仕事をすると、その分だけ内部エネルギーの増加が小さくなります。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"気体が外部に熱を放出するとき、熱量Qの符号はどうなりますか。",
+	choices:["Q＞0","Q＜0","Q＝0","常に一定"],
+	answer:"Q＜0",
+	explanation:"気体から熱が放出される場合、Qは負になります。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"気体が圧縮されるとき、体積変化ΔVと外部から気体がされる仕事Wの符号はどうなりますか。",
+	choices:["ΔV＞0、W＜0","ΔV＜0、W＞0","ΔV＞0、W＞0","ΔV＜0、W＜0"],
+	answer:"ΔV＜0、W＞0",
+	explanation:"圧縮では体積が減少し、気体は外部から仕事をされます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"断面積Sのピストンが距離ΔLだけ移動したとき、気体の体積変化ΔVを表す式を書きなさい。",
+	answer:"ΔV＝SΔL",
+	explanation:"体積変化は断面積とピストンの移動距離の積です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"圧力pがほぼ一定のとき、気体が外部にする仕事W'を体積変化ΔVで表しなさい。",
+	answer:"W'＝pΔV",
+	explanation:"一定圧力のもとでは、気体が外部にする仕事は圧力と体積変化の積です。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"気体が外部にする仕事W'と、外部から気体がされる仕事Wの関係はどれですか。",
+	choices:["W＝W'","W＝−W'","W＝2W'","W＝0"],
+	answer:"W＝−W'",
+	explanation:"外部にする仕事と外部からされる仕事は、符号が反対になります。"
+	},
+	{
+	type:"選択式",
+	level:"★☆☆",
+	question:"等速円運動をする物体に、回転面に対して真横から平行な光線を当てたときにできる運動を何といいますか。",
+	choices:["等加速度運動","単振動","自由落下","円運動"],
+	answer:"単振動",
+	explanation:"等速円運動の正射影は単振動になります。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動で、振動の中心からの変位の最大値を何といいますか。",
+	answer:"振幅",
+	explanation:"振幅Aは振動の中心からの変位の最大値です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動で、1秒間に振動する回数を何といいますか。",
+	answer:"振動数",
+	explanation:"振動数fは1秒間に振動する回数です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動で、1回の振動に必要な時間を何といいますか。",
+	answer:"周期",
+	explanation:"周期Tは1回の振動に必要な時間です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"振動数fと周期Tの関係を表す式を書きなさい。",
+	answer:"f＝1/T",
+	explanation:"振動数は周期の逆数です。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"角振動数ωと周期Tの関係を表す式を書きなさい。",
+	answer:"ω＝2π/T",
+	explanation:"角振動数は2πを周期で割ったものです。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"時刻t＝0で変位が0となり、正の向きに運動を始める単振動の変位xを表す式はどれですか。",
+	choices:["x＝Acosωt","x＝Asinωt","x＝−Acosωt","x＝−Asinωt"],
+	answer:"x＝Asinωt",
+	explanation:"教材では初期位相が0の単振動をx＝Asinωtと表しています。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動の速度vを、振幅A、角振動数ω、時刻tを用いて表しなさい。",
+	answer:"v＝Aωcosωt",
+	explanation:"変位x＝Asinωtを時間で微分すると速度が求められます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動の加速度aを、振幅A、角振動数ω、時刻tを用いて表しなさい。",
+	answer:"a＝−Aω²sinωt",
+	explanation:"単振動の加速度は変位と逆向きになります。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振動の加速度aを変位xを用いて表しなさい。",
+	answer:"a＝−ω²x",
+	explanation:"加速度は変位に比例し、向きは変位と反対です。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"単振動をする物体にはたらく復元力の特徴として正しいものはどれですか。",
+	choices:["変位と同じ向きにはたらく","振動の中心から遠ざかる向きにはたらく","常に振動の中心に向かってはたらく","常に一定の向きにはたらく"],
+	answer:"常に振動の中心に向かってはたらく",
+	explanation:"復元力は物体を振動の中心に戻す役割を果たします。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"フックの法則に従う復元力Fを、比例定数Kと変位xを用いて表しなさい。",
+	answer:"F＝−Kx",
+	explanation:"復元力は変位に比例し、変位と反対向きにはたらきます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"ばね振り子の周期Tを、質量mとばね定数Kを用いて表しなさい。",
+	answer:"T＝2π√(m/K)",
+	explanation:"ばね振り子の周期は質量とばね定数によって決まります。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"ばね振り子の周期について正しいものはどれですか。",
+	choices:["振幅だけで決まる","ばね定数と物体の質量だけで決まる","重力加速度だけで決まる","物体の速さだけで決まる"],
+	answer:"ばね定数と物体の質量だけで決まる",
+	explanation:"ばね振り子の周期は振幅には関係しません。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"鉛直ばね振り子がつりあいの位置にあるとき、重力とばねの弾性力のつりあいを表す式を書きなさい。自然の長さからの伸びをx₀とします。",
+	answer:"mg＝kx₀",
+	explanation:"つりあいの位置では、重力とばねの弾性力がつりあいます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"単振り子の力の接線方向の成分Fを、質量m、重力加速度g、角度θを用いて表しなさい。",
+	answer:"F＝−mg sinθ",
+	explanation:"単振り子の復元力は−mg sinθです。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"単振り子の振幅が十分小さいときに利用する近似式はどれですか。",
+	choices:["sinθ≒θ","sinθ≒θ²","cosθ≒θ","tanθ≒θ²"],
+	answer:"sinθ≒θ",
+	explanation:"角度が十分小さいとき、sinθ≒θと近似できます。"
+	},
+	{
+	type:"記述式",
+	level:"★★☆",
+	question:"振幅が小さい単振り子の周期Tを、糸の長さLと重力加速度gを用いて表しなさい。",
+	answer:"T＝2π√(L/g)",
+	explanation:"小さな振幅の単振り子の周期は糸の長さと重力加速度で決まります。"
+	},
+	{
+	type:"選択式",
+	level:"★★★",
+	question:"単振り子の等時性について正しい説明はどれですか。",
+	choices:["おもりの質量によって周期が変化する","振幅が大きいほど必ず周期が短くなる","振幅が小さければ周期はおもりの質量や振幅に関係しない","糸の長さに関係なく周期は一定である"],
+	answer:"振幅が小さければ周期はおもりの質量や振幅に関係しない",
+	explanation:"振幅が小さい場合、単振り子の周期は糸の長さと重力加速度で決まり、質量や振幅には関係しません。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"単振動をする物体の力学的エネルギーについて、教材の説明に合うものはどれですか。",
+	choices:["振幅の2乗と振動数の2乗に比例する","振幅だけに比例する","振動数に反比例する","質量に関係しない"],
+	answer:"振幅の2乗と振動数の2乗に比例する",
+	explanation:"教材では、単振動の力学的エネルギーは振幅の2乗と振動数の2乗に比例すると説明されています。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"単振動の速度と加速度について正しいものはどれですか。",
+	choices:["等速円運動の速度と加速度のx軸方向の成分から考えられる","常に同じ大きさである","速度は常に0である","加速度は変位と同じ向きである"],
+	answer:"等速円運動の速度と加速度のx軸方向の成分から考えられる",
+	explanation:"単振動の速度と加速度は、等速円運動の速度と加速度をx軸方向に正射影して考えられます。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"単振動の復元力の役割として正しいものはどれですか。",
+	choices:["物体を振動の中心から遠ざける","物体を振動の中心に戻す","物体の質量を変える","振動の周期を0にする"],
+	answer:"物体を振動の中心に戻す",
+	explanation:"復元力は振動の中心からずれた物体を中心に戻す役割を果たします。"
+	},
+	{
+	type:"選択式",
+	level:"★★☆",
+	question:"気体の内部エネルギーについて、温度がΔTだけ変化したときの内部エネルギーの変化ΔUを表す式はどれですか。単原子分子理想気体の場合とします。",
+	choices:["ΔU＝nRΔT","ΔU＝3/2 nRΔT","ΔU＝2nRΔT","ΔU＝1/2 nRΔT"],
+	answer:"ΔU＝3/2 nRΔT",
+	explanation:"単原子分子理想気体の内部エネルギーの変化はΔU＝3/2 nRΔTです。"
+	}
+
+
+
 ];
 
 const practiceQuestionData = {
@@ -1778,5 +2431,6 @@ const practiceQuestionData = {
     "計測制御": electronicMeasurementControlQuestions,
     "国語１年": kokugo1Questions,
     "漢字2年": kanjiQuestions,
-    "漢字3年": kanji3Questions
+    "漢字3年": kanji3Questions,
+    "物理": physicsQuestions
 };
