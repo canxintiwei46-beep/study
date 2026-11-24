@@ -13,7 +13,7 @@ let currentPlanVersion = "";
 let isRetryingWrongQuestions = false;
 
 function goToGameMode() {
-    const gameUrl = new URL("../game/game.(2).html", window.location.href);
+    const gameUrl = new URL("./game.(2).html", window.location.href);
     console.log("ゲームの移動先:", gameUrl.href);
     window.location.href = gameUrl.href;
 }
